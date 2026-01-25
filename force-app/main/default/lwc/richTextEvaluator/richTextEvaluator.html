@@ -3,7 +3,7 @@
         <h2 slot="title">
             <lightning-icon icon-name="custom:custom63" size="small" class="slds-m-right_small"></lightning-icon>
             Rich Text Editor Evaluation
-            <span class="version-badge">v3.3.9</span>
+            <span class="version-badge">v3.4.0</span>
         </h2>
 
         <div slot="actions">
@@ -76,27 +76,41 @@
                         </div>
                     </lightning-tab>
 
-                    <!-- Source: View HTML source from both editors -->
+                    <!-- Source: iframe preview + HTML source -->
                     <lightning-tab label="Source" value="source">
                         <div class="editor-tab-content">
                             <div class="tab-actions">
                                 <lightning-button-group>
-                                    <lightning-button label="Copy Standard" icon-name="utility:copy" onclick={handleCopyStandardSource}></lightning-button>
-                                    <lightning-button label="Copy Quill" icon-name="utility:copy" onclick={handleCopyQuillSource}></lightning-button>
+                                    <lightning-button
+                                        label="Standard"
+                                        icon-name="utility:lightning_extension"
+                                        variant={sourceStandardVariant}
+                                        onclick={handleSourceSelectStandard}></lightning-button>
+                                    <lightning-button
+                                        label="Quill"
+                                        icon-name="utility:edit"
+                                        variant={sourceQuillVariant}
+                                        onclick={handleSourceSelectQuill}></lightning-button>
+                                </lightning-button-group>
+                                <lightning-button-group class="slds-m-left_medium">
+                                    <lightning-button label="Copy HTML" icon-name="utility:copy" onclick={handleCopyActiveSource}></lightning-button>
                                     <lightning-button label="Refresh" icon-name="utility:refresh" onclick={handleRefreshSource}></lightning-button>
                                 </lightning-button-group>
                             </div>
-                            <div class="source-split">
-                                <div class="source-pane">
-                                    <div class="pane-header">Standard</div>
-                                    <div class="source-content">
-                                        <pre class="source-code">{formattedStandardSource}</pre>
-                                    </div>
+                            <div class="source-stack">
+                                <div class="iframe-pane">
+                                    <div class="pane-header">Rendered Preview (iframe)</div>
+                                    <iframe
+                                        lwc:ref="sourceIframe"
+                                        class="html-iframe"
+                                        sandbox="allow-same-origin"
+                                        title="HTML Preview">
+                                    </iframe>
                                 </div>
                                 <div class="source-pane">
-                                    <div class="pane-header">Quill</div>
+                                    <div class="pane-header">HTML Source</div>
                                     <div class="source-content">
-                                        <pre class="source-code">{formattedQuillSource}</pre>
+                                        <pre class="source-code">{formattedActiveSource}</pre>
                                     </div>
                                 </div>
                             </div>
@@ -107,7 +121,7 @@
 
             <template if:true={showEventLog}>
                 <div class="event-log-container">
-                    <c-event-log-panel lwc:ref="eventLog" component-version="v3.3.9"></c-event-log-panel>
+                    <c-event-log-panel lwc:ref="eventLog" component-version="v3.4.0"></c-event-log-panel>
                 </div>
             </template>
         </div>

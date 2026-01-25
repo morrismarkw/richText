@@ -45,6 +45,7 @@ export default class RichTextEvaluator extends LightningElement {
     @track showToast = false;
     @track toastMessage = '';
     @track toastVariant = 'success';
+    @track sourceViewEditor = 'quill'; // Which editor's source to show in Source tab
 
     // Preview content for each editor
     @track standardPreviewContent = '';
@@ -175,6 +176,27 @@ export default class RichTextEvaluator extends LightningElement {
         return this.formatHtml(this.quillPreviewContent);
     }
 
+    get sourceStandardVariant() {
+        return this.sourceViewEditor === 'standard' ? 'brand' : 'neutral';
+    }
+
+    get sourceQuillVariant() {
+        return this.sourceViewEditor === 'quill' ? 'brand' : 'neutral';
+    }
+
+    get formattedActiveSource() {
+        const content = this.sourceViewEditor === 'standard'
+            ? this.standardPreviewContent
+            : this.quillPreviewContent;
+        return this.formatHtml(content);
+    }
+
+    get activeSourceContent() {
+        return this.sourceViewEditor === 'standard'
+            ? this.standardPreviewContent
+            : this.quillPreviewContent;
+    }
+
     // ==================== EVENT HANDLERS ====================
 
     handleTabSelect(event) {
@@ -186,6 +208,14 @@ export default class RichTextEvaluator extends LightningElement {
             newTab: this.activeTab,
             editorName: EDITOR_MAP[this.activeTab]
         });
+
+        // Update iframe when switching to source tab
+        if (this.activeTab === 'source') {
+            // eslint-disable-next-line @lwc/lwc/no-async-operation
+            setTimeout(() => {
+                this.updateSourceIframe();
+            }, 50);
+        }
     }
 
     handleEditorEvent(event) {
@@ -385,16 +415,22 @@ export default class RichTextEvaluator extends LightningElement {
 
     // ==================== SOURCE TAB ACTIONS ====================
 
-    handleCopyStandardSource() {
-        const standardEditor = this.template.querySelector('c-editor-standard');
-        const content = standardEditor ? standardEditor.getContent() : this.standardPreviewContent;
-        this.copyToClipboard(content, 'Standard Source');
+    handleSourceSelectStandard() {
+        this.sourceViewEditor = 'standard';
+        this.updateSourceIframe();
+        this.logInternalEvent('source-view-changed', 'interaction', { editor: 'Standard' });
     }
 
-    handleCopyQuillSource() {
-        const quillEditor = this.template.querySelector('c-editor-quill');
-        const content = quillEditor && quillEditor.getIsLoaded() ? quillEditor.getContent() : this.quillPreviewContent;
-        this.copyToClipboard(content, 'Quill Source');
+    handleSourceSelectQuill() {
+        this.sourceViewEditor = 'quill';
+        this.updateSourceIframe();
+        this.logInternalEvent('source-view-changed', 'interaction', { editor: 'Quill' });
+    }
+
+    handleCopyActiveSource() {
+        const content = this.activeSourceContent;
+        const editorName = this.sourceViewEditor === 'standard' ? 'Standard' : 'Quill';
+        this.copyToClipboard(content, `${editorName} Source`);
     }
 
     handleRefreshSource() {
@@ -409,11 +445,47 @@ export default class RichTextEvaluator extends LightningElement {
             this.quillPreviewContent = quillEditor.getContent();
         }
 
+        this.updateSourceIframe();
+
         this.logInternalEvent('source-refreshed', 'api', {
             standardLength: this.standardPreviewContent?.length || 0,
             quillLength: this.quillPreviewContent?.length || 0
         });
         this.showToastMessage('Source refreshed', 'success');
+    }
+
+    updateSourceIframe() {
+        const iframe = this.refs.sourceIframe;
+        if (iframe) {
+            const content = this.activeSourceContent || '';
+            const htmlDoc = `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <style>
+                        body {
+                            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                            font-size: 14px;
+                            line-height: 1.6;
+                            color: #181818;
+                            padding: 16px;
+                            margin: 0;
+                        }
+                        table { border-collapse: collapse; width: 100%; margin: 1em 0; }
+                        th, td { border: 1px solid #c9c9c9; padding: 8px 12px; text-align: left; }
+                        th { background: #f4f6f9; font-weight: 600; }
+                        img { max-width: 100%; height: auto; }
+                        a { color: #0176d3; }
+                        code { background: #f4f6f9; padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+                        pre { background: #f4f6f9; padding: 12px; border-radius: 8px; overflow-x: auto; }
+                        blockquote { margin: 1em 0; padding-left: 1em; border-left: 3px solid #0176d3; color: #444; }
+                    </style>
+                </head>
+                <body>${content}</body>
+                </html>
+            `;
+            iframe.srcdoc = htmlDoc;
+        }
     }
 
     // ==================== UTILITY ====================

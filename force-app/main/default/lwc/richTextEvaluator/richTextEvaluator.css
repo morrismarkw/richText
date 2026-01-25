@@ -137,18 +137,32 @@
     letter-spacing: 0.05em;
 }
 
-/* Source View Styling */
-.source-split {
+/* Source View Styling - Stacked Layout */
+.source-stack {
     display: flex;
-    gap: 1rem;
-    height: calc(100% - 50px);
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.iframe-pane {
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--cosmos-border-color);
+    border-radius: var(--cosmos-border-radius);
+    overflow: hidden;
+    background: var(--cosmos-background-default);
+}
+
+.html-iframe {
+    width: 100%;
+    min-height: 200px;
+    border: none;
+    background: white;
 }
 
 .source-pane {
-    flex: 1;
     display: flex;
     flex-direction: column;
-    min-width: 0;
     border: 1px solid var(--cosmos-border-color);
     border-radius: var(--cosmos-border-radius);
     overflow: hidden;
@@ -156,10 +170,10 @@
 }
 
 .source-content {
-    flex: 1;
     overflow: auto;
     background: #1e1e1e;
     padding: 0;
+    max-height: 300px;
 }
 
 .source-code {
