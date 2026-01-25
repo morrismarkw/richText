@@ -1,15 +1,10 @@
 <template>
-    <div class="editor-wrapper" onclick={handleContainerClick}>
-        <lightning-input-rich-text
-            value={content}
-            onchange={handleChange}
-            onfocus={handleFocus}
-            onblur={handleBlur}
-            placeholder="Enter content here..."
-            label="Standard Rich Text Editor"
-            label-visible
-            variant="bottom-toolbar"
-            lwc:ref="editor">
-        </lightning-input-rich-text>
-    </div>
+    <lightning-input-rich-text
+        value={content}
+        onchange={handleChange}
+        onfocus={handleFocus}
+        onblur={handleBlur}
+        placeholder="Enter content here..."
+        variant="bottom-toolbar">
+    </lightning-input-rich-text>
 </template>

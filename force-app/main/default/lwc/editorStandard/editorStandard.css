@@ -1,12 +1,1 @@
-/* Layout only - no visual overrides to lightning-input-rich-text */
-.editor-wrapper {
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-}
-
-/* Ensure the RTE fills available space */
-.editor-wrapper lightning-input-rich-text {
-    flex: 1;
-    min-height: 0;
-}
+/* No custom styling - using standard lightning-input-rich-text */

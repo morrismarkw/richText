@@ -15,35 +15,26 @@ export default class EditorStandard extends LightningElement {
                 contextMenu: false,
                 programmaticInsert: true,
                 selectionEvents: false,
-                clickEvents: 'limited'
+                clickEvents: false
             }
         });
-    }
-
-    renderedCallback() {
-        // Add click listener to capture clicks within the editor
-        const wrapper = this.template.querySelector('.editor-wrapper');
-        if (wrapper && !wrapper._clickHandlerAdded) {
-            wrapper.addEventListener('click', this.handleEditorClick.bind(this), true);
-            wrapper._clickHandlerAdded = true;
-        }
     }
 
     // ==================== PUBLIC API ====================
 
     @api
     getContent() {
-        this.fireEvent('content-get', 'api', { content: this.content });
+        this.fireEvent('content-get', 'api', { contentLength: this.content?.length || 0 });
         return this.content;
     }
 
     @api
     setContent(html) {
-        const previousContent = this.content;
+        const previousLength = this.content?.length || 0;
         this.content = html || '';
         this.fireEvent('content-set', 'api', {
-            previousContent,
-            newContent: this.content
+            previousLength,
+            newLength: this.content.length
         });
     }
 
@@ -51,7 +42,7 @@ export default class EditorStandard extends LightningElement {
     insertContent(html, position = 'end') {
         // Standard editor doesn't support cursor position insertion
         // So we append or prepend based on position
-        const previousContent = this.content;
+        const previousLength = this.content?.length || 0;
 
         if (position === 'start') {
             this.content = html + this.content;
@@ -60,17 +51,15 @@ export default class EditorStandard extends LightningElement {
         }
 
         this.fireEvent('content-insert', 'api', {
-            insertedHtml: html,
+            htmlLength: html.length,
             position,
-            previousContent,
-            newContent: this.content,
-            note: 'Standard editor does not support cursor position insertion'
+            newLength: this.content.length
         });
     }
 
     @api
     focus() {
-        const editor = this.refs.editor;
+        const editor = this.template.querySelector('lightning-input-rich-text');
         if (editor) {
             editor.focus();
         }
@@ -79,7 +68,7 @@ export default class EditorStandard extends LightningElement {
 
     @api
     blur() {
-        const editor = this.refs.editor;
+        const editor = this.template.querySelector('lightning-input-rich-text');
         if (editor) {
             editor.blur();
         }
@@ -97,9 +86,9 @@ export default class EditorStandard extends LightningElement {
             name: EDITOR_NAME,
             customToolbar: false,
             contextMenu: false,
-            programmaticInsert: 'limited', // Can't insert at cursor
+            programmaticInsert: 'append-only',
             selectionEvents: false,
-            clickEvents: 'container-only',
+            clickEvents: false,
             formatCommands: false,
             imageUpload: true,
             tableSupport: false,
@@ -110,13 +99,13 @@ export default class EditorStandard extends LightningElement {
     // ==================== EVENT HANDLERS ====================
 
     handleChange(event) {
-        const previousContent = this.content;
+        const previousLength = this.content?.length || 0;
         this.content = event.target.value;
 
         this.fireEvent('content-change', 'content', {
-            previousContent,
-            newContent: this.content,
-            changeSource: 'user'
+            previousLength,
+            newLength: this.content.length,
+            source: 'user'
         });
 
         // Dispatch custom event for parent component
@@ -128,53 +117,12 @@ export default class EditorStandard extends LightningElement {
         }));
     }
 
-    handleFocus(event) {
-        this.fireEvent('focus', 'interaction', {
-            source: 'user'
-        });
+    handleFocus() {
+        this.fireEvent('focus', 'interaction', { source: 'user' });
     }
 
-    handleBlur(event) {
-        this.fireEvent('blur', 'interaction', {
-            source: 'user'
-        });
-    }
-
-    handleContainerClick(event) {
-        // Capture click coordinates relative to the container
-        const rect = event.currentTarget.getBoundingClientRect();
-        this.fireEvent('click', 'interaction', {
-            x: Math.round(event.clientX - rect.left),
-            y: Math.round(event.clientY - rect.top),
-            clientX: event.clientX,
-            clientY: event.clientY,
-            target: event.target.tagName,
-            targetClass: event.target.className
-        });
-    }
-
-    handleEditorClick(event) {
-        // More detailed click tracking within the editor
-        const target = event.target;
-        let targetInfo = {
-            tagName: target.tagName,
-            className: target.className
-        };
-
-        // Try to identify toolbar buttons
-        if (target.closest('button')) {
-            const button = target.closest('button');
-            targetInfo.button = {
-                title: button.title || button.getAttribute('aria-label'),
-                name: button.name
-            };
-        }
-
-        this.fireEvent('editor-click', 'interaction', {
-            x: event.clientX,
-            y: event.clientY,
-            target: targetInfo
-        });
+    handleBlur() {
+        this.fireEvent('blur', 'interaction', { source: 'user' });
     }
 
     // ==================== UTILITY METHODS ====================
