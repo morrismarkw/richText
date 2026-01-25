@@ -1,0 +1,17 @@
+<template>
+    <div class="editor-wrapper">
+        <template if:false={isLoaded}>
+            <div class="loading-spinner">
+                <lightning-spinner alternative-text="Loading Quill editor..."></lightning-spinner>
+                <p class="slds-m-top_small">Loading Quill editor...</p>
+            </div>
+        </template>
+        <template if:true={loadError}>
+            <div class="load-error">
+                <lightning-icon icon-name="utility:error" variant="error"></lightning-icon>
+                <p>Failed to load Quill: {loadError}</p>
+            </div>
+        </template>
+        <div class={editorContainerClass} lwc:ref="editorContainer"></div>
+    </div>
+</template>

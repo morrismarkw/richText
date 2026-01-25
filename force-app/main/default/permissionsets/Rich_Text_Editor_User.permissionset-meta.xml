@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>Grants access to Rich Text Document object and related components</description>
+    <hasActivationRequired>false</hasActivationRequired>
+    <label>Rich Text Editor User</label>
+    <objectPermissions>
+        <allowCreate>true</allowCreate>
+        <allowDelete>true</allowDelete>
+        <allowEdit>true</allowEdit>
+        <allowRead>true</allowRead>
+        <modifyAllRecords>false</modifyAllRecords>
+        <object>Rich_Text_Document__c</object>
+        <viewAllRecords>true</viewAllRecords>
+    </objectPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Rich_Text_Document__c.Content__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Rich_Text_Document__c.Editor_Type__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Rich_Text_Document__c.Last_Editor_Event__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <tabSettings>
+        <tab>Rich_Text_Document__c</tab>
+        <visibility>Visible</visibility>
+    </tabSettings>
+</PermissionSet>

@@ -1,0 +1,19 @@
+<template>
+    <div class="editor-wrapper">
+        <template if:false={isLoaded}>
+            <div class="loading-spinner">
+                <lightning-spinner alternative-text="Loading CKEditor..."></lightning-spinner>
+                <p class="slds-m-top_small">Loading CKEditor 5...</p>
+            </div>
+        </template>
+        <template if:true={loadError}>
+            <div class="load-error">
+                <lightning-icon icon-name="utility:error" variant="error"></lightning-icon>
+                <p>Failed to load CKEditor: {loadError}</p>
+            </div>
+        </template>
+        <div class={editorContainerClass}>
+            <div lwc:ref="editorContainer" class="ckeditor-element"></div>
+        </div>
+    </div>
+</template>

@@ -1,0 +1,96 @@
+<template>
+    <div class="event-log-container">
+        <div class="log-header">
+            <h3 class="slds-text-heading_small">Event Log</h3>
+            <div class="log-actions">
+                <lightning-button
+                    label="Copy"
+                    onclick={handleCopyToClipboard}
+                    variant="brand"
+                    icon-name="utility:copy"
+                    title="Copy events to clipboard">
+                </lightning-button>
+                <lightning-button
+                    label="Clear"
+                    onclick={handleClear}
+                    variant="neutral"
+                    icon-name="utility:clear">
+                </lightning-button>
+            </div>
+        </div>
+
+        <div class="log-filters">
+            <lightning-input
+                type="search"
+                label="Search"
+                variant="label-hidden"
+                placeholder="Search events..."
+                value={filterText}
+                onchange={handleFilterChange}
+                class="filter-input">
+            </lightning-input>
+            <select class="editor-filter" onchange={handleEditorFilterChange}>
+                <option value="">All Editors</option>
+                <option value="Standard">Standard</option>
+                <option value="Quill">Quill</option>
+                <option value="TinyMCE">TinyMCE</option>
+                <option value="CKEditor">CKEditor</option>
+                <option value="Inline">Inline</option>
+                <option value="Component">Component</option>
+                <option value="Custom">Custom</option>
+                <option value="System">System</option>
+            </select>
+        </div>
+
+        <div class="category-toggles">
+            <template for:each={categoryFilters} for:item="cat">
+                <button
+                    key={cat.name}
+                    class={cat.buttonClass}
+                    data-category={cat.name}
+                    onclick={handleCategoryToggle}
+                    title={cat.label}>
+                    {cat.label}
+                </button>
+            </template>
+        </div>
+
+        <div class="log-stats slds-text-body_small">
+            <span class="stats-count">Showing {filteredEventCount} of {totalEventCount} events</span>
+            <template if:true={copyStatus}>
+                <span class="copy-status">{copyStatus}</span>
+            </template>
+        </div>
+
+        <div class="log-entries" lwc:ref="logContainer">
+            <div class="event-header">
+                <span class="header-timestamp">Time</span>
+                <span class="header-editor">Editor</span>
+                <span class="header-category">Category</span>
+                <span class="header-type">Event Type</span>
+                <span class="header-details"></span>
+            </div>
+            <template if:true={hasEvents}>
+                <template for:each={filteredEvents} for:item="event">
+                    <div key={event.id} class={event.rowClass}>
+                        <span class="event-timestamp">{event.timestamp}</span>
+                        <span class={event.editorClass}>{event.editor}</span>
+                        <span class={event.categoryClass}>{event.category}</span>
+                        <span class="event-type">{event.eventType}</span>
+                        <button class="details-toggle" onclick={handleToggleDetails} data-id={event.id}>
+                            {event.toggleLabel}
+                        </button>
+                        <template if:true={event.showDetails}>
+                            <pre class="event-details">{event.detailsJson}</pre>
+                        </template>
+                    </div>
+                </template>
+            </template>
+            <template if:false={hasEvents}>
+                <div class="no-events slds-text-color_weak slds-text-align_center slds-p-around_medium">
+                    No events captured yet. Interact with an editor to see events here.
+                </div>
+            </template>
+        </div>
+    </div>
+</template>

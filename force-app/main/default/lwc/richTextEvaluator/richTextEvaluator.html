@@ -1,0 +1,165 @@
+<template>
+    <lightning-card>
+        <h2 slot="title">
+            <lightning-icon icon-name="custom:custom63" size="small" class="slds-m-right_small"></lightning-icon>
+            Rich Text Editor Evaluation
+            <span class="version-badge">v3.2.0</span>
+        </h2>
+
+        <div slot="actions">
+            <lightning-button-group>
+                <lightning-button
+                    label="Save"
+                    variant="brand"
+                    icon-name="utility:save"
+                    onclick={handleSave}
+                    disabled={isSaving}>
+                </lightning-button>
+                <lightning-button
+                    label={toggleLogLabel}
+                    icon-name={toggleLogIcon}
+                    onclick={handleToggleLog}>
+                </lightning-button>
+            </lightning-button-group>
+        </div>
+
+        <div class="main-container">
+            <div class={editorContainerClass}>
+                <lightning-tabset active-tab-value={activeTab} onselect={handleTabSelect}>
+                    <!-- Standard: Salesforce lightning-input-rich-text -->
+                    <lightning-tab label="Standard" value="standard">
+                        <div class="editor-tab-content">
+                            <div class="tab-actions">
+                                <lightning-button-group>
+                                    <lightning-button label="Load" icon-name="utility:download" onclick={handleStandardLoad}></lightning-button>
+                                    <lightning-button label="Inject Sample" icon-name="utility:paste" onclick={handleStandardInject}></lightning-button>
+                                    <lightning-button label="Clear" icon-name="utility:clear" onclick={handleStandardClear}></lightning-button>
+                                    <lightning-button label="Copy HTML" icon-name="utility:copy" onclick={handleStandardCopy}></lightning-button>
+                                </lightning-button-group>
+                            </div>
+                            <c-editor-standard
+                                oneditorevent={handleEditorEvent}
+                                oncontentchange={handleContentChange}>
+                            </c-editor-standard>
+                        </div>
+                    </lightning-tab>
+
+                    <!-- Quill: Quill editor as sub-component -->
+                    <lightning-tab label="Quill" value="quill">
+                        <div class="editor-tab-content">
+                            <div class="tab-actions">
+                                <lightning-button-group>
+                                    <lightning-button label="Load" icon-name="utility:download" onclick={handleQuillLoad}></lightning-button>
+                                    <lightning-button label="Inject Sample" icon-name="utility:paste" onclick={handleQuillInject}></lightning-button>
+                                    <lightning-button label="Clear" icon-name="utility:clear" onclick={handleQuillClear}></lightning-button>
+                                    <lightning-button label="Copy HTML" icon-name="utility:copy" onclick={handleQuillCopy}></lightning-button>
+                                </lightning-button-group>
+                            </div>
+                            <c-editor-quill
+                                oneditorevent={handleEditorEvent}
+                                oncontentchange={handleContentChange}>
+                            </c-editor-quill>
+                        </div>
+                    </lightning-tab>
+
+                    <!-- cInline: Custom contenteditable inline in parent -->
+                    <lightning-tab label="cInline" value="cinline">
+                        <div class="editor-tab-content">
+                            <div class="tab-actions">
+                                <lightning-button-group>
+                                    <lightning-button label="Load" icon-name="utility:download" onclick={handleCInlineLoad}></lightning-button>
+                                    <lightning-button label="Inject Sample" icon-name="utility:paste" onclick={handleCInlineInject}></lightning-button>
+                                    <lightning-button label="Clear" icon-name="utility:clear" onclick={handleCInlineClear}></lightning-button>
+                                    <lightning-button label="Copy HTML" icon-name="utility:copy" onclick={handleCInlineCopy}></lightning-button>
+                                </lightning-button-group>
+                            </div>
+                            <div class="custom-editor-container">
+                                <div class="custom-toolbar">
+                                    <select class="custom-toolbar-select" onchange={handleCustomHeading}>
+                                        <option value="">Normal</option>
+                                        <option value="h1">Heading 1</option>
+                                        <option value="h2">Heading 2</option>
+                                        <option value="h3">Heading 3</option>
+                                    </select>
+                                    <span class="custom-toolbar-divider"></span>
+                                    <button type="button" class="custom-toolbar-btn" data-cmd="bold" onclick={handleCustomCommand} title="Bold (Ctrl+B)"><b>B</b></button>
+                                    <button type="button" class="custom-toolbar-btn" data-cmd="italic" onclick={handleCustomCommand} title="Italic (Ctrl+I)"><i>I</i></button>
+                                    <button type="button" class="custom-toolbar-btn" data-cmd="underline" onclick={handleCustomCommand} title="Underline (Ctrl+U)"><u>U</u></button>
+                                    <button type="button" class="custom-toolbar-btn" data-cmd="strikeThrough" onclick={handleCustomCommand} title="Strikethrough"><s>S</s></button>
+                                    <span class="custom-toolbar-divider"></span>
+                                    <button type="button" class="custom-toolbar-btn" data-cmd="foreColor" data-value="#ff0000" onclick={handleCustomCommand} title="Text Color"><span style="color: red;">A</span></button>
+                                    <button type="button" class="custom-toolbar-btn" data-cmd="hiliteColor" data-value="#ffff00" onclick={handleCustomCommand} title="Highlight"><span style="background: yellow;">H</span></button>
+                                    <span class="custom-toolbar-divider"></span>
+                                    <button type="button" class="custom-toolbar-btn" data-cmd="insertUnorderedList" onclick={handleCustomCommand} title="Bullet List">•</button>
+                                    <button type="button" class="custom-toolbar-btn" data-cmd="insertOrderedList" onclick={handleCustomCommand} title="Numbered List">1.</button>
+                                    <button type="button" class="custom-toolbar-btn" data-cmd="indent" onclick={handleCustomCommand} title="Indent">→</button>
+                                    <button type="button" class="custom-toolbar-btn" data-cmd="outdent" onclick={handleCustomCommand} title="Outdent">←</button>
+                                    <span class="custom-toolbar-divider"></span>
+                                    <button type="button" class="custom-toolbar-btn" data-cmd="justifyLeft" onclick={handleCustomCommand} title="Align Left">⇤</button>
+                                    <button type="button" class="custom-toolbar-btn" data-cmd="justifyCenter" onclick={handleCustomCommand} title="Align Center">⇔</button>
+                                    <button type="button" class="custom-toolbar-btn" data-cmd="justifyRight" onclick={handleCustomCommand} title="Align Right">⇥</button>
+                                    <span class="custom-toolbar-divider"></span>
+                                    <button type="button" class="custom-toolbar-btn" onclick={handleCustomInsertLink} title="Insert Link">🔗</button>
+                                    <button type="button" class="custom-toolbar-btn" data-cmd="insertHorizontalRule" onclick={handleCustomCommand} title="Horizontal Line">―</button>
+                                    <span class="custom-toolbar-divider"></span>
+                                    <button type="button" class="custom-toolbar-btn" data-cmd="undo" onclick={handleCustomCommand} title="Undo (Ctrl+Z)">↶</button>
+                                    <button type="button" class="custom-toolbar-btn" data-cmd="redo" onclick={handleCustomCommand} title="Redo (Ctrl+Y)">↷</button>
+                                    <button type="button" class="custom-toolbar-btn" data-cmd="removeFormat" onclick={handleCustomCommand} title="Clear Formatting">✖</button>
+                                </div>
+                                <div
+                                    class="custom-editor-content"
+                                    contenteditable="true"
+                                    onkeydown={handleCustomKeyDown}
+                                    onkeyup={handleCustomKeyUp}
+                                    oninput={handleCustomInput}
+                                    onclick={handleCustomClick}
+                                    onfocus={handleCustomFocus}
+                                    onblur={handleCustomBlur}
+                                    onpaste={handleCustomPaste}
+                                    onmouseup={handleCustomMouseUp}
+                                    oncontextmenu={handleCustomContextMenu}>
+                                </div>
+                                <div class="custom-status-bar">
+                                    <span>Characters: {customCharCount}</span>
+                                    <span>Words: {customWordCount}</span>
+                                    <span class="custom-selection-info">{customSelectionInfo}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </lightning-tab>
+
+                    <!-- cComponent: Custom contenteditable as sub-component -->
+                    <lightning-tab label="cComponent" value="ccomponent">
+                        <div class="editor-tab-content">
+                            <div class="tab-actions">
+                                <lightning-button-group>
+                                    <lightning-button label="Load" icon-name="utility:download" onclick={handleCComponentLoad}></lightning-button>
+                                    <lightning-button label="Inject Sample" icon-name="utility:paste" onclick={handleCComponentInject}></lightning-button>
+                                    <lightning-button label="Clear" icon-name="utility:clear" onclick={handleCComponentClear}></lightning-button>
+                                    <lightning-button label="Copy HTML" icon-name="utility:copy" onclick={handleCComponentCopy}></lightning-button>
+                                </lightning-button-group>
+                            </div>
+                            <c-editor-custom
+                                oneditorevent={handleEditorEvent}
+                                oncontentchange={handleContentChange}>
+                            </c-editor-custom>
+                        </div>
+                    </lightning-tab>
+                </lightning-tabset>
+            </div>
+
+            <template if:true={showEventLog}>
+                <div class="event-log-container">
+                    <c-event-log-panel lwc:ref="eventLog" component-version="v3.2.0"></c-event-log-panel>
+                </div>
+            </template>
+        </div>
+
+        <template if:true={showToast}>
+            <div class={toastClass} role="status">
+                <lightning-icon icon-name={toastIcon} size="x-small" class="slds-m-right_small"></lightning-icon>
+                {toastMessage}
+            </div>
+        </template>
+    </lightning-card>
+</template>

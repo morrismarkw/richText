@@ -1,0 +1,19 @@
+<template>
+    <div class="editor-wrapper">
+        <template if:false={isLoaded}>
+            <div class="loading-spinner">
+                <lightning-spinner alternative-text="Loading TinyMCE editor..."></lightning-spinner>
+                <p class="slds-m-top_small">Loading TinyMCE editor...</p>
+            </div>
+        </template>
+        <template if:true={loadError}>
+            <div class="load-error">
+                <lightning-icon icon-name="utility:error" variant="error"></lightning-icon>
+                <p>Failed to load TinyMCE: {loadError}</p>
+            </div>
+        </template>
+        <div class={editorContainerClass}>
+            <textarea lwc:ref="editorTextarea"></textarea>
+        </div>
+    </div>
+</template>
