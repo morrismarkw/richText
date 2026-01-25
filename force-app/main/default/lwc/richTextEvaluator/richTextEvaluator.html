@@ -3,7 +3,7 @@
         <h2 slot="title">
             <lightning-icon icon-name="custom:custom63" size="small" class="slds-m-right_small"></lightning-icon>
             Rich Text Editor Evaluation
-            <span class="version-badge">v3.3.7</span>
+            <span class="version-badge">v3.3.8</span>
         </h2>
 
         <div slot="actions">
@@ -37,19 +37,15 @@
                                     <lightning-button label="Copy HTML" icon-name="utility:copy" onclick={handleStandardCopy}></lightning-button>
                                 </lightning-button-group>
                             </div>
-                            <div class="editor-preview-split">
+                            <div class="editor-preview-stack">
                                 <div class="editor-pane">
-                                    <div class="pane-header">Editor</div>
                                     <c-editor-standard
                                         oneditorevent={handleEditorEvent}
                                         oncontentchange={handleStandardContentChange}>
                                     </c-editor-standard>
                                 </div>
                                 <div class="preview-pane">
-                                    <div class="pane-header">Preview</div>
-                                    <div class="preview-content">
-                                        <lightning-formatted-rich-text value={standardPreviewContent}></lightning-formatted-rich-text>
-                                    </div>
+                                    <lightning-formatted-rich-text value={standardPreviewContent}></lightning-formatted-rich-text>
                                 </div>
                             </div>
                         </div>
@@ -66,19 +62,15 @@
                                     <lightning-button label="Copy HTML" icon-name="utility:copy" onclick={handleQuillCopy}></lightning-button>
                                 </lightning-button-group>
                             </div>
-                            <div class="editor-preview-split">
+                            <div class="editor-preview-stack">
                                 <div class="editor-pane">
-                                    <div class="pane-header">Editor</div>
                                     <c-editor-quill
                                         oneditorevent={handleEditorEvent}
                                         oncontentchange={handleQuillContentChange}>
                                     </c-editor-quill>
                                 </div>
                                 <div class="preview-pane">
-                                    <div class="pane-header">Preview</div>
-                                    <div class="preview-content">
-                                        <lightning-formatted-rich-text value={quillPreviewContent}></lightning-formatted-rich-text>
-                                    </div>
+                                    <lightning-formatted-rich-text value={quillPreviewContent}></lightning-formatted-rich-text>
                                 </div>
                             </div>
                         </div>
@@ -96,13 +88,13 @@
                             </div>
                             <div class="source-split">
                                 <div class="source-pane">
-                                    <div class="pane-header">Standard Source</div>
+                                    <div class="pane-header">Standard</div>
                                     <div class="source-content">
                                         <pre class="source-code">{formattedStandardSource}</pre>
                                     </div>
                                 </div>
                                 <div class="source-pane">
-                                    <div class="pane-header">Quill Source</div>
+                                    <div class="pane-header">Quill</div>
                                     <div class="source-content">
                                         <pre class="source-code">{formattedQuillSource}</pre>
                                     </div>
@@ -115,7 +107,7 @@
 
             <template if:true={showEventLog}>
                 <div class="event-log-container">
-                    <c-event-log-panel lwc:ref="eventLog" component-version="v3.3.7"></c-event-log-panel>
+                    <c-event-log-panel lwc:ref="eventLog" component-version="v3.3.8"></c-event-log-panel>
                 </div>
             </template>
         </div>
