@@ -546,42 +546,296 @@ new Quill('#editor', { theme: 'bubble' });
 
 ---
 
-## PDF to HTML Conversion Guidelines
+## Document Conversion Guidelines
 
-When converting PDF documents to HTML for Quill editing:
+This section covers converting various document formats to Quill-safe HTML.
 
-### Prompt Template for AI Converters
+### Supported Source Formats
+
+| Format | Extension | Approach | Notes |
+|--------|-----------|----------|-------|
+| **PDF** | .pdf | LLM vision, pdf.js + LLM | Layout extraction is challenging |
+| **Word (new)** | .docx | mammoth.js, LLM | DOCX is XML-based, easier to parse |
+| **Word (old)** | .doc | Server-side conversion, LLM | Binary format, harder to parse |
+| **Rich Text** | .rtf | rtf.js, LLM | Older format, moderate complexity |
+| **HTML** | .html | Direct sanitization | Already HTML, just needs cleanup |
+| **Markdown** | .md | marked.js, showdown.js | Clean conversion |
+
+---
+
+### DOCX Conversion (Recommended: mammoth.js)
+
+DOCX files are ZIP archives containing XML. mammoth.js extracts and converts cleanly.
+
+```javascript
+import mammoth from 'mammoth';
+
+async function convertDocxToQuillSafe(file) {
+    const arrayBuffer = await file.arrayBuffer();
+
+    // mammoth converts to clean semantic HTML
+    const result = await mammoth.convertToHtml(
+        { arrayBuffer },
+        {
+            // Custom style mappings
+            styleMap: [
+                "p[style-name='Heading 1'] => h1:fresh",
+                "p[style-name='Heading 2'] => h2:fresh",
+                "p[style-name='Quote'] => blockquote:fresh",
+                "r[style-name='Code'] => code"
+            ]
+        }
+    );
+
+    const html = result.value;
+    const warnings = result.messages; // Log these for debugging
+
+    // Post-process to extract tables as components
+    return extractComponentsFromHtml(html);
+}
+
+// Extract tables and other unsupported elements
+function extractComponentsFromHtml(html) {
+    const registry = {};
+
+    // Replace tables with placeholders
+    const processedHtml = html.replace(
+        /<table[\s\S]*?<\/table>/gi,
+        (match) => {
+            const id = generateUUID();
+            registry[id] = { type: 'TABLE', html: match };
+            return `{{COMPONENT:TABLE:${id}}}`;
+        }
+    );
+
+    return { html: processedHtml, components: registry };
+}
+```
+
+### DOC Conversion (Legacy Binary Format)
+
+For .doc files (pre-2007 Word), options are limited:
+
+```javascript
+// Option 1: Server-side with LibreOffice
+// Requires LibreOffice installed on server
+async function convertDocServerSide(file) {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await fetch('/api/convert-doc', {
+        method: 'POST',
+        body: formData
+    });
+
+    return response.json(); // { html, components }
+}
+
+// Option 2: Use LLM with file upload capability
+// See LLM-Based Conversion section below
+```
+
+---
+
+### PDF Conversion
+
+PDFs are challenging because they're designed for print layout, not document structure.
+
+**Approaches:**
+
+| Method | Best For | Limitations |
+|--------|----------|-------------|
+| **LLM Vision** | Complex layouts, tables | Cost, latency |
+| **pdf.js + LLM** | Text extraction + AI structuring | Two-step process |
+| **pdf-parse** | Simple text PDFs | Loses formatting |
+
+```javascript
+// Using pdf.js for text extraction, then LLM for structuring
+import * as pdfjsLib from 'pdfjs-dist';
+
+async function extractPdfText(file) {
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+
+    let fullText = '';
+    for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const content = await page.getTextContent();
+        const pageText = content.items.map(item => item.str).join(' ');
+        fullText += pageText + '\n\n';
+    }
+
+    // Send to LLM for structuring
+    return await structureWithLLM(fullText);
+}
+```
+
+---
+
+### LLM-Based Conversion (Recommended for Complex Documents)
+
+LLMs excel at understanding document structure and producing clean output. This approach works for any format.
+
+**Conversion Flow:**
 
 ```
-Convert this PDF to HTML using ONLY these elements:
+┌──────────────┐     ┌─────────────────┐     ┌──────────────────┐
+│   Document   │────>│  LLM Conversion │────>│  Quill-Safe HTML │
+│  (any format)│     │  (with prompt)  │     │  + Components    │
+└──────────────┘     └─────────────────┘     └──────────────────┘
+```
 
-ALLOWED BLOCK ELEMENTS:
+**System Prompt for Document Conversion:**
+
+```
+You are a document converter. Convert the provided document to clean HTML
+suitable for a rich text editor with LIMITED capabilities.
+
+## OUTPUT FORMAT
+
+Return a JSON object with two properties:
+{
+    "html": "...",      // Quill-safe HTML content
+    "components": {}    // Registry of preserved complex elements
+}
+
+## ALLOWED HTML ELEMENTS (use ONLY these)
+
+Block elements:
 - <p> for paragraphs
-- <h1> through <h6> for headings
-- <ul> and <ol> with <li> for lists
+- <h1>, <h2>, <h3>, <h4>, <h5>, <h6> for headings
+- <ul>, <ol>, <li> for lists
 - <blockquote> for quoted text
 - <pre> for code blocks
 
-ALLOWED INLINE ELEMENTS:
-- <strong> or <b> for bold
-- <em> or <i> for italic
+Inline elements:
+- <strong> for bold
+- <em> for italic
 - <u> for underline
-- <a href=""> for links
+- <s> for strikethrough
+- <a href="..."> for links
 - <code> for inline code
 - <br> for line breaks
 
-FORBIDDEN (do not use):
-- <table>, <tr>, <td>, <th> - describe tables as lists or paragraphs
-- <div>, <span> - use semantic elements instead
-- style="" attributes - no inline styles
-- class="" attributes - no CSS classes
-- <font>, <center>, or other deprecated elements
+Embeds:
+- <img src="..." alt="..."> for images
 
-For complex tables: Convert to a structured list or use placeholder {{COMPONENT:TABLE:description}}
-For images: Use <img src="base64..." alt="description">
+## FORBIDDEN (never use)
+
+- <table>, <tr>, <td>, <th> - see special handling below
+- <div>, <span>
+- style="" attributes
+- class="" attributes
+- <font>, <center>, or deprecated elements
+
+## SPECIAL HANDLING FOR TABLES
+
+When you encounter a table:
+1. Generate a UUID for it
+2. Store the full table HTML in the components registry
+3. Insert a placeholder in the main HTML
+
+Example:
+- Original has a 3x3 table with sales data
+- In "html": include {{COMPONENT:TABLE:abc-123}}
+- In "components": { "abc-123": { "type": "TABLE", "html": "<table>...</table>" } }
+
+## SPECIAL HANDLING FOR COMPLEX LAYOUTS
+
+For sidebars, callout boxes, multi-column layouts:
+1. If content is simple, flatten to sequential paragraphs
+2. If layout is meaningful, preserve as component with type "LAYOUT"
+
+## PRESERVE MEANING, NOT FORMATTING
+
+- Convert font sizes to appropriate heading levels
+- Convert colored text to semantic meaning (red warning → <strong>)
+- Convert indentation to lists where appropriate
+- Keep the document readable and well-structured
 ```
 
+**LLM Conversion Function:**
+
+```javascript
+async function convertWithLLM(document, fileType) {
+    const systemPrompt = DOCUMENT_CONVERSION_PROMPT; // Above prompt
+
+    const userMessage = buildUserMessage(document, fileType);
+
+    const response = await callLLM({
+        model: 'claude-sonnet-4-20250514', // or gpt-4-vision for images
+        system: systemPrompt,
+        messages: [{ role: 'user', content: userMessage }],
+        max_tokens: 16000
+    });
+
+    // Parse the JSON response
+    const result = JSON.parse(response.content);
+
+    return {
+        html: result.html,
+        components: result.components || {}
+    };
+}
+
+function buildUserMessage(document, fileType) {
+    switch (fileType) {
+        case 'pdf':
+            // For vision models, send as image
+            return [
+                { type: 'text', text: 'Convert this PDF to HTML:' },
+                { type: 'image', source: { type: 'base64', data: document } }
+            ];
+        case 'docx':
+        case 'doc':
+            // Extract text first, send as text
+            return `Convert this document to HTML:\n\n${document}`;
+        case 'html':
+            return `Clean and simplify this HTML for Quill editor:\n\n${document}`;
+        default:
+            return `Convert this content to HTML:\n\n${document}`;
+    }
+}
+```
+
+**Hybrid Approach (Library + LLM):**
+
+```javascript
+async function convertDocument(file) {
+    const fileType = file.name.split('.').pop().toLowerCase();
+
+    // Step 1: Initial conversion with appropriate library
+    let rawContent;
+    switch (fileType) {
+        case 'docx':
+            const mammothResult = await mammoth.convertToHtml({ arrayBuffer: await file.arrayBuffer() });
+            rawContent = mammothResult.value;
+            break;
+        case 'pdf':
+            rawContent = await extractPdfText(file);
+            break;
+        case 'html':
+            rawContent = await file.text();
+            break;
+        default:
+            rawContent = await file.text();
+    }
+
+    // Step 2: Use LLM to clean up and extract components
+    const result = await convertWithLLM(rawContent, 'html');
+
+    // Step 3: Final sanitization pass
+    result.html = sanitizeForQuill(result.html);
+
+    return result;
+}
+```
+
+---
+
 ### Post-Processing Sanitizer
+
+Always sanitize as a final safety pass:
 
 ```javascript
 function sanitizeForQuill(html) {
@@ -608,6 +862,21 @@ function sanitizeForQuill(html) {
 
 ---
 
+### Conversion Quality Checklist
+
+| Check | Description |
+|-------|-------------|
+| ✓ Headings preserved | H1-H6 hierarchy makes sense |
+| ✓ Lists intact | Bullet/numbered lists converted properly |
+| ✓ Links work | Href attributes present and valid |
+| ✓ Images included | Base64 or valid URLs |
+| ✓ Tables captured | Stored in component registry |
+| ✓ No style attributes | Clean semantic HTML |
+| ✓ No divs/spans | Only allowed elements |
+| ✓ Readable flow | Document makes sense sequentially |
+
+---
+
 ## Architecture Recommendation
 
 ```
@@ -615,10 +884,15 @@ function sanitizeForQuill(html) {
 │                        Content Flow                              │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                  │
-│  ┌─────────┐    ┌──────────────┐    ┌─────────────────────┐    │
-│  │   PDF   │───>│  Converter   │───>│  Quill-Safe HTML    │    │
-│  └─────────┘    │  (AI/Tool)   │    │  + Component Registry│    │
-│                 └──────────────┘    └──────────┬──────────┘    │
+│  ┌─────────┐                                                    │
+│  │   PDF   │──┐                                                 │
+│  └─────────┘  │                                                 │
+│  ┌─────────┐  │  ┌──────────────┐    ┌─────────────────────┐   │
+│  │  DOCX   │──┼─>│  Converter   │───>│  Quill-Safe HTML    │   │
+│  └─────────┘  │  │ (mammoth.js  │    │  + Component Registry│   │
+│  ┌─────────┐  │  │  + LLM)      │    └──────────┬──────────┘   │
+│  │   DOC   │──┘  └──────────────┘               │               │
+│  └─────────┘                                    │               │
 │                                                 │                │
 │                                                 v                │
 │                                     ┌─────────────────────┐     │
@@ -847,4 +1121,5 @@ For very large documents, consider:
 | 1.0 | 2025-01-25 | Initial documentation |
 | 1.1 | 2025-01-25 | Added Custom Blot pattern, Component Editor Dialog, Quill features reference |
 | 1.2 | 2025-01-25 | Added Paste Interception patterns, Salesforce platform considerations (Locker Service, LWS, static resources) |
+| 1.3 | 2025-01-25 | Expanded Document Conversion: DOCX (mammoth.js), DOC, PDF, LLM-based conversion with system prompts |
 
