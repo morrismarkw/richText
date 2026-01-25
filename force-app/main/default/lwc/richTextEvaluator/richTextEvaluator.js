@@ -32,9 +32,7 @@ const SAMPLE_CONTENT = `
 
 const EDITOR_MAP = {
     standard: 'Standard',
-    quill: 'Quill',
-    cinline: 'Inline',
-    ccomponent: 'Component'
+    quill: 'Quill'
 };
 
 export default class RichTextEvaluator extends LightningElement {
@@ -47,14 +45,8 @@ export default class RichTextEvaluator extends LightningElement {
     @track toastMessage = '';
     @track toastVariant = 'success';
 
-    // Inline (Custom Inline) editor state
-    @track customCharCount = 0;
-    @track customWordCount = 0;
-    @track customSelectionInfo = '';
-
     _recordContent = '';
     _recordEditorType = '';
-    _customLastContent = '';
     _contentPushedToEditors = false;
     _hasRendered = false;
     _quillScriptsLoaded = false;
@@ -100,18 +92,6 @@ export default class RichTextEvaluator extends LightningElement {
         // Push to Quill component
         const quill = this.template.querySelector('c-editor-quill');
         if (quill) quill.setContent(this._recordContent);
-
-        // Push to Component (Custom component)
-        const ccomponent = this.template.querySelector('c-editor-custom');
-        if (ccomponent) ccomponent.setContent(this._recordContent);
-
-        // Inline editor will get content when tab is activated (via onactive handler)
-        const inlineEditor = this.template.querySelector('.custom-editor-content');
-        if (inlineEditor) {
-            inlineEditor.innerHTML = this._recordContent;
-            this._customLastContent = this._recordContent;
-            this.updateCustomCounts();
-        }
 
         this._contentPushedToEditors = true;
         this.logInternalEvent('content-pushed-all', 'api', {
@@ -199,8 +179,7 @@ export default class RichTextEvaluator extends LightningElement {
     pushContentToEditor(editorName) {
         const editorMap = {
             'Standard': 'c-editor-standard',
-            'Quill': 'c-editor-quill',
-            'Component': 'c-editor-custom'
+            'Quill': 'c-editor-quill'
         };
 
         const selector = editorMap[editorName];
@@ -240,12 +219,6 @@ export default class RichTextEvaluator extends LightningElement {
                     break;
                 case 'quill':
                     content = this.template.querySelector('c-editor-quill')?.getContent() || '';
-                    break;
-                case 'cinline':
-                    content = this.template.querySelector('.custom-editor-content')?.innerHTML || '';
-                    break;
-                case 'ccomponent':
-                    content = this.template.querySelector('c-editor-custom')?.getContent() || '';
                     break;
             }
 
@@ -362,98 +335,6 @@ export default class RichTextEvaluator extends LightningElement {
         }
     }
 
-    // ==================== INLINE TAB HANDLERS ====================
-
-    handleInlineTabActive() {
-        // Load content when Inline tab becomes active
-        // eslint-disable-next-line @lwc/lwc/no-async-operation
-        setTimeout(() => {
-            const el = this.template.querySelector('.custom-editor-content');
-            if (el && this._recordContent) {
-                el.innerHTML = this._recordContent;
-                this._customLastContent = this._recordContent;
-                this.updateCustomCounts();
-                this.logInternalEvent('content-loaded', 'api', { editor: 'Inline', trigger: 'tab-active' });
-            }
-        }, 50);
-    }
-
-    // ==================== INLINE TAB ACTIONS ====================
-
-    handleCInlineLoad() {
-        const el = this.template.querySelector('.custom-editor-content');
-        if (el && this._recordContent) {
-            el.innerHTML = this._recordContent;
-            this._customLastContent = this._recordContent;
-            this.updateCustomCounts();
-            this.logInternalEvent('content-loaded', 'api', { editor: 'Inline', contentLength: this._recordContent.length });
-            this.showToastMessage('Content loaded', 'success');
-        } else if (!this._recordContent) {
-            this.showToastMessage('No saved content to load', 'error');
-        }
-    }
-
-    handleCInlineInject() {
-        const el = this.template.querySelector('.custom-editor-content');
-        if (el) {
-            el.innerHTML += SAMPLE_CONTENT;
-            this.updateCustomCounts();
-            this.logInternalEvent('sample-injected', 'api', { editor: 'Inline' });
-        }
-    }
-
-    handleCInlineClear() {
-        const el = this.template.querySelector('.custom-editor-content');
-        if (el) {
-            el.innerHTML = '<p><br></p>';
-            this.updateCustomCounts();
-            this.logInternalEvent('content-cleared', 'api', { editor: 'Inline' });
-        }
-    }
-
-    handleCInlineCopy() {
-        const el = this.template.querySelector('.custom-editor-content');
-        if (el) {
-            this.copyToClipboard(el.innerHTML, 'Inline');
-        }
-    }
-
-    // ==================== COMPONENT TAB ACTIONS ====================
-
-    handleCComponentLoad() {
-        const editor = this.template.querySelector('c-editor-custom');
-        if (editor && this._recordContent) {
-            editor.setContent(this._recordContent);
-            this.logInternalEvent('content-loaded', 'api', { editor: 'Component', contentLength: this._recordContent.length });
-            this.showToastMessage('Content loaded', 'success');
-        } else if (!this._recordContent) {
-            this.showToastMessage('No saved content to load', 'error');
-        }
-    }
-
-    handleCComponentInject() {
-        const editor = this.template.querySelector('c-editor-custom');
-        if (editor) {
-            editor.insertContent(SAMPLE_CONTENT, 'end');
-            this.logInternalEvent('sample-injected', 'api', { editor: 'Component' });
-        }
-    }
-
-    handleCComponentClear() {
-        const editor = this.template.querySelector('c-editor-custom');
-        if (editor) {
-            editor.setContent('');
-            this.logInternalEvent('content-cleared', 'api', { editor: 'Component' });
-        }
-    }
-
-    handleCComponentCopy() {
-        const editor = this.template.querySelector('c-editor-custom');
-        if (editor) {
-            this.copyToClipboard(editor.getContent(), 'CComponent');
-        }
-    }
-
     // ==================== UTILITY ====================
 
     copyToClipboard(content, editorName) {
@@ -497,233 +378,5 @@ export default class RichTextEvaluator extends LightningElement {
         setTimeout(() => {
             this.showToast = false;
         }, 3000);
-    }
-
-    // ==================== CINLINE CUSTOM EDITOR HANDLERS ====================
-
-    getCustomEditorElement() {
-        return this.template.querySelector('.custom-editor-content');
-    }
-
-    handleCustomCommand(event) {
-        const cmd = event.currentTarget.dataset.cmd;
-        const value = event.currentTarget.dataset.value || null;
-        if (!cmd) return;
-
-        const editor = this.getCustomEditorElement();
-        if (editor) editor.focus();
-
-        const success = document.execCommand(cmd, false, value);
-        this.logCustomEvent('command', 'interaction', { command: cmd, value, success });
-        this.updateCustomCounts();
-    }
-
-    handleCustomHeading(event) {
-        const value = event.target.value;
-        const editor = this.getCustomEditorElement();
-        if (editor) editor.focus();
-
-        document.execCommand('formatBlock', false, value || 'p');
-        event.target.value = '';
-        this.logCustomEvent('heading-change', 'content', { heading: value || 'p' });
-    }
-
-    handleCustomInsertLink() {
-        const url = prompt('Enter URL:');
-        if (url) {
-            const editor = this.getCustomEditorElement();
-            if (editor) editor.focus();
-            document.execCommand('createLink', false, url);
-            this.logCustomEvent('link-inserted', 'content', { url });
-        }
-    }
-
-    handleCustomKeyDown(event) {
-        this.logCustomEvent('keydown', 'interaction', {
-            key: event.key,
-            code: event.code,
-            ctrlKey: event.ctrlKey,
-            metaKey: event.metaKey
-        });
-
-        if (event.ctrlKey || event.metaKey) {
-            switch (event.key.toLowerCase()) {
-                case 'b':
-                    event.preventDefault();
-                    document.execCommand('bold', false, null);
-                    this.logCustomEvent('shortcut', 'interaction', { shortcut: 'Ctrl+B' });
-                    break;
-                case 'i':
-                    event.preventDefault();
-                    document.execCommand('italic', false, null);
-                    this.logCustomEvent('shortcut', 'interaction', { shortcut: 'Ctrl+I' });
-                    break;
-                case 'u':
-                    event.preventDefault();
-                    document.execCommand('underline', false, null);
-                    this.logCustomEvent('shortcut', 'interaction', { shortcut: 'Ctrl+U' });
-                    break;
-            }
-        }
-    }
-
-    handleCustomKeyUp() {
-        this.updateCustomSelectionInfo();
-        this.updateToolbarState();
-    }
-
-    handleCustomInput(event) {
-        this.updateCustomCounts();
-        this.notifyCustomContentChange();
-        this.logCustomEvent('input', 'content', { inputType: event.inputType, data: event.data });
-    }
-
-    handleCustomClick(event) {
-        const editor = this.getCustomEditorElement();
-        if (!editor) return;
-
-        const rect = editor.getBoundingClientRect();
-        this.logCustomEvent('click', 'interaction', {
-            x: Math.round(event.clientX - rect.left),
-            y: Math.round(event.clientY - rect.top),
-            target: event.target.tagName
-        });
-        this.updateCustomSelectionInfo();
-        this.updateToolbarState();
-    }
-
-    handleCustomFocus() {
-        this.logCustomEvent('focus', 'interaction', { source: 'user' });
-    }
-
-    handleCustomBlur() {
-        this.logCustomEvent('blur', 'interaction', { source: 'user' });
-    }
-
-    handleCustomPaste(event) {
-        const types = event.clipboardData ? Array.from(event.clipboardData.types) : [];
-        this.logCustomEvent('paste', 'content', { types });
-
-        // eslint-disable-next-line @lwc/lwc/no-async-operation
-        setTimeout(() => {
-            this.updateCustomCounts();
-            this.notifyCustomContentChange();
-        }, 0);
-    }
-
-    handleCustomMouseUp() {
-        this.updateCustomSelectionInfo();
-        this.updateToolbarState();
-        const sel = window.getSelection();
-        const text = sel ? sel.toString() : '';
-        if (text) {
-            this.logCustomEvent('text-selected', 'selection', { length: text.length, preview: text.substring(0, 50) });
-        }
-    }
-
-    handleCustomContextMenu(event) {
-        const editor = this.getCustomEditorElement();
-        if (!editor) return;
-
-        const rect = editor.getBoundingClientRect();
-        this.logCustomEvent('contextmenu', 'interaction', {
-            x: Math.round(event.clientX - rect.left),
-            y: Math.round(event.clientY - rect.top),
-            clientX: event.clientX,
-            clientY: event.clientY
-        });
-    }
-
-    updateCustomCounts() {
-        const editor = this.getCustomEditorElement();
-        if (!editor) return;
-
-        const text = editor.innerText || '';
-        this.customCharCount = text.length;
-        this.customWordCount = text.trim() ? text.trim().split(/\s+/).length : 0;
-    }
-
-    updateCustomSelectionInfo() {
-        const sel = window.getSelection();
-        if (!sel || sel.rangeCount === 0) {
-            this.customSelectionInfo = '';
-            return;
-        }
-
-        const text = sel.toString();
-        if (text.length > 0) {
-            this.customSelectionInfo = `Selected: ${text.length} chars`;
-            this.logCustomEvent('selection-change', 'selection', { hasSelection: true, length: text.length });
-        } else {
-            this.customSelectionInfo = '';
-        }
-    }
-
-    notifyCustomContentChange() {
-        const editor = this.getCustomEditorElement();
-        if (!editor) return;
-
-        const content = editor.innerHTML;
-        if (content !== this._customLastContent) {
-            this._customLastContent = content;
-            this._recordContent = content;
-            this.logCustomEvent('content-change', 'content', {
-                contentLength: content.length,
-                charCount: this.customCharCount,
-                wordCount: this.customWordCount
-            });
-        }
-    }
-
-    // Update toolbar button states based on current formatting
-    updateToolbarState() {
-        const commands = ['bold', 'italic', 'underline', 'strikeThrough', 'insertUnorderedList', 'insertOrderedList', 'justifyLeft', 'justifyCenter', 'justifyRight'];
-
-        commands.forEach(cmd => {
-            const buttons = this.template.querySelectorAll(`.custom-toolbar-btn[data-cmd="${cmd}"]`);
-            buttons.forEach(btn => {
-                try {
-                    const isActive = document.queryCommandState(cmd);
-                    if (isActive) {
-                        btn.classList.add('active');
-                    } else {
-                        btn.classList.remove('active');
-                    }
-                } catch (e) {
-                    // queryCommandState can throw for some commands
-                }
-            });
-        });
-
-        // Update heading select
-        const headingSelect = this.template.querySelector('.custom-toolbar-select');
-        if (headingSelect) {
-            const sel = window.getSelection();
-            if (sel && sel.rangeCount > 0) {
-                let node = sel.anchorNode;
-                // Walk up to find block element
-                while (node && node.nodeType !== 1) {
-                    node = node.parentNode;
-                }
-                if (node) {
-                    const blockParent = node.closest('h1, h2, h3, p, div');
-                    if (blockParent) {
-                        const tagName = blockParent.tagName.toLowerCase();
-                        if (['h1', 'h2', 'h3'].includes(tagName)) {
-                            headingSelect.value = tagName;
-                        } else {
-                            headingSelect.value = '';
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    logCustomEvent(eventType, category, details) {
-        const eventLog = this.getEventLogPanel();
-        if (eventLog) {
-            eventLog.logEvent({ editor: 'Inline', eventType, category, details });
-        }
     }
 }
