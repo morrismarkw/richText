@@ -3,7 +3,7 @@
         <h2 slot="title">
             <lightning-icon icon-name="custom:custom63" size="small" class="slds-m-right_small"></lightning-icon>
             Rich Text Editor Evaluation
-            <span class="version-badge">v3.2.0</span>
+            <span class="version-badge">v3.2.9</span>
         </h2>
 
         <div slot="actions">
@@ -62,8 +62,8 @@
                         </div>
                     </lightning-tab>
 
-                    <!-- cInline: Custom contenteditable inline in parent -->
-                    <lightning-tab label="cInline" value="cinline">
+                    <!-- Inline: Custom contenteditable inline in parent -->
+                    <lightning-tab label="Inline" value="cinline" onactive={handleInlineTabActive}>
                         <div class="editor-tab-content">
                             <div class="tab-actions">
                                 <lightning-button-group>
@@ -128,8 +128,8 @@
                         </div>
                     </lightning-tab>
 
-                    <!-- cComponent: Custom contenteditable as sub-component -->
-                    <lightning-tab label="cComponent" value="ccomponent">
+                    <!-- Component: Custom contenteditable as sub-component -->
+                    <lightning-tab label="Component" value="ccomponent">
                         <div class="editor-tab-content">
                             <div class="tab-actions">
                                 <lightning-button-group>
@@ -150,7 +150,7 @@
 
             <template if:true={showEventLog}>
                 <div class="event-log-container">
-                    <c-event-log-panel lwc:ref="eventLog" component-version="v3.2.0"></c-event-log-panel>
+                    <c-event-log-panel lwc:ref="eventLog" component-version="v3.2.9"></c-event-log-panel>
                 </div>
             </template>
         </div>

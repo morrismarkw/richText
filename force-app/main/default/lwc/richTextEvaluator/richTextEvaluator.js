@@ -33,8 +33,8 @@ const SAMPLE_CONTENT = `
 const EDITOR_MAP = {
     standard: 'Standard',
     quill: 'Quill',
-    cinline: 'cInline',
-    ccomponent: 'cComponent'
+    cinline: 'Inline',
+    ccomponent: 'Component'
 };
 
 export default class RichTextEvaluator extends LightningElement {
@@ -47,7 +47,7 @@ export default class RichTextEvaluator extends LightningElement {
     @track toastMessage = '';
     @track toastVariant = 'success';
 
-    // cInline (Custom Inline) editor state
+    // Inline (Custom Inline) editor state
     @track customCharCount = 0;
     @track customWordCount = 0;
     @track customSelectionInfo = '';
@@ -69,7 +69,6 @@ export default class RichTextEvaluator extends LightningElement {
                 loadScript(this, QUILL + '/quill.min.js')
             ]);
             this._quillScriptsLoaded = true;
-            console.log('[RichTextEvaluator] Quill scripts loaded');
         } catch (error) {
             console.error('[RichTextEvaluator] Failed to load Quill:', error);
         }
@@ -81,7 +80,6 @@ export default class RichTextEvaluator extends LightningElement {
             this._hasRendered = true;
 
             if (this._recordContent && !this._contentPushedToEditors) {
-                console.log('[renderedCallback] First render with content, pushing to editors');
                 // eslint-disable-next-line @lwc/lwc/no-async-operation
                 setTimeout(() => {
                     this.pushContentToAllEditors();
@@ -95,8 +93,6 @@ export default class RichTextEvaluator extends LightningElement {
     pushContentToAllEditors() {
         if (this._contentPushedToEditors || !this._recordContent) return;
 
-        console.log('[pushContentToAllEditors] Pushing content to all editors');
-
         // Push to Standard
         const standard = this.template.querySelector('c-editor-standard');
         if (standard) standard.setContent(this._recordContent);
@@ -105,14 +101,14 @@ export default class RichTextEvaluator extends LightningElement {
         const quill = this.template.querySelector('c-editor-quill');
         if (quill) quill.setContent(this._recordContent);
 
-        // Push to cComponent (Custom component)
+        // Push to Component (Custom component)
         const ccomponent = this.template.querySelector('c-editor-custom');
         if (ccomponent) ccomponent.setContent(this._recordContent);
 
-        // cInline will get content when tab is selected
-        const cinline = this.template.querySelector('.custom-editor-content');
-        if (cinline) {
-            cinline.innerHTML = this._recordContent;
+        // Inline editor will get content when tab is activated (via onactive handler)
+        const inlineEditor = this.template.querySelector('.custom-editor-content');
+        if (inlineEditor) {
+            inlineEditor.innerHTML = this._recordContent;
             this._customLastContent = this._recordContent;
             this.updateCustomCounts();
         }
@@ -139,7 +135,6 @@ export default class RichTextEvaluator extends LightningElement {
             });
 
             if (this._hasRendered && !this._contentPushedToEditors) {
-                console.log('[wiredRecord] Already rendered, pushing content to editors');
                 // eslint-disable-next-line @lwc/lwc/no-async-operation
                 setTimeout(() => {
                     this.pushContentToAllEditors();
@@ -180,26 +175,11 @@ export default class RichTextEvaluator extends LightningElement {
         const previousTab = this.activeTab;
         this.activeTab = event.target.value;
 
-        console.log('[handleTabSelect] Tab changed:', previousTab, '->', this.activeTab);
-
         this.logInternalEvent('tab-change', 'lifecycle', {
             previousTab,
             newTab: this.activeTab,
             editorName: EDITOR_MAP[this.activeTab]
         });
-
-        // Push content to cInline if switching to that tab
-        if (this.activeTab === 'cinline' && this._recordContent) {
-            // eslint-disable-next-line @lwc/lwc/no-async-operation
-            setTimeout(() => {
-                const el = this.template.querySelector('.custom-editor-content');
-                if (el && !el.innerHTML.trim()) {
-                    el.innerHTML = this._recordContent;
-                    this._customLastContent = this._recordContent;
-                    this.updateCustomCounts();
-                }
-            }, 50);
-        }
     }
 
     handleEditorEvent(event) {
@@ -212,7 +192,6 @@ export default class RichTextEvaluator extends LightningElement {
 
         // When an editor signals it's ready, push saved content to it
         if (eventType === 'editor-ready' && this._recordContent) {
-            console.log(`[handleEditorEvent] ${editor} is ready, pushing saved content`);
             this.pushContentToEditor(editor);
         }
     }
@@ -383,7 +362,23 @@ export default class RichTextEvaluator extends LightningElement {
         }
     }
 
-    // ==================== CINLINE TAB ACTIONS ====================
+    // ==================== INLINE TAB HANDLERS ====================
+
+    handleInlineTabActive() {
+        // Load content when Inline tab becomes active
+        // eslint-disable-next-line @lwc/lwc/no-async-operation
+        setTimeout(() => {
+            const el = this.template.querySelector('.custom-editor-content');
+            if (el && this._recordContent) {
+                el.innerHTML = this._recordContent;
+                this._customLastContent = this._recordContent;
+                this.updateCustomCounts();
+                this.logInternalEvent('content-loaded', 'api', { editor: 'Inline', trigger: 'tab-active' });
+            }
+        }, 50);
+    }
+
+    // ==================== INLINE TAB ACTIONS ====================
 
     handleCInlineLoad() {
         const el = this.template.querySelector('.custom-editor-content');
@@ -391,7 +386,7 @@ export default class RichTextEvaluator extends LightningElement {
             el.innerHTML = this._recordContent;
             this._customLastContent = this._recordContent;
             this.updateCustomCounts();
-            this.logInternalEvent('content-loaded', 'api', { editor: 'cInline', contentLength: this._recordContent.length });
+            this.logInternalEvent('content-loaded', 'api', { editor: 'Inline', contentLength: this._recordContent.length });
             this.showToastMessage('Content loaded', 'success');
         } else if (!this._recordContent) {
             this.showToastMessage('No saved content to load', 'error');
@@ -403,7 +398,7 @@ export default class RichTextEvaluator extends LightningElement {
         if (el) {
             el.innerHTML += SAMPLE_CONTENT;
             this.updateCustomCounts();
-            this.logInternalEvent('sample-injected', 'api', { editor: 'cInline' });
+            this.logInternalEvent('sample-injected', 'api', { editor: 'Inline' });
         }
     }
 
@@ -412,24 +407,24 @@ export default class RichTextEvaluator extends LightningElement {
         if (el) {
             el.innerHTML = '<p><br></p>';
             this.updateCustomCounts();
-            this.logInternalEvent('content-cleared', 'api', { editor: 'cInline' });
+            this.logInternalEvent('content-cleared', 'api', { editor: 'Inline' });
         }
     }
 
     handleCInlineCopy() {
         const el = this.template.querySelector('.custom-editor-content');
         if (el) {
-            this.copyToClipboard(el.innerHTML, 'CInline');
+            this.copyToClipboard(el.innerHTML, 'Inline');
         }
     }
 
-    // ==================== cCOMPONENT TAB ACTIONS ====================
+    // ==================== COMPONENT TAB ACTIONS ====================
 
     handleCComponentLoad() {
         const editor = this.template.querySelector('c-editor-custom');
         if (editor && this._recordContent) {
             editor.setContent(this._recordContent);
-            this.logInternalEvent('content-loaded', 'api', { editor: 'cComponent', contentLength: this._recordContent.length });
+            this.logInternalEvent('content-loaded', 'api', { editor: 'Component', contentLength: this._recordContent.length });
             this.showToastMessage('Content loaded', 'success');
         } else if (!this._recordContent) {
             this.showToastMessage('No saved content to load', 'error');
@@ -440,7 +435,7 @@ export default class RichTextEvaluator extends LightningElement {
         const editor = this.template.querySelector('c-editor-custom');
         if (editor) {
             editor.insertContent(SAMPLE_CONTENT, 'end');
-            this.logInternalEvent('sample-injected', 'api', { editor: 'cComponent' });
+            this.logInternalEvent('sample-injected', 'api', { editor: 'Component' });
         }
     }
 
@@ -448,7 +443,7 @@ export default class RichTextEvaluator extends LightningElement {
         const editor = this.template.querySelector('c-editor-custom');
         if (editor) {
             editor.setContent('');
-            this.logInternalEvent('content-cleared', 'api', { editor: 'cComponent' });
+            this.logInternalEvent('content-cleared', 'api', { editor: 'Component' });
         }
     }
 
@@ -728,7 +723,7 @@ export default class RichTextEvaluator extends LightningElement {
     logCustomEvent(eventType, category, details) {
         const eventLog = this.getEventLogPanel();
         if (eventLog) {
-            eventLog.logEvent({ editor: 'cInline', eventType, category, details });
+            eventLog.logEvent({ editor: 'Inline', eventType, category, details });
         }
     }
 }
