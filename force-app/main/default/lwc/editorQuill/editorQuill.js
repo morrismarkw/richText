@@ -88,7 +88,7 @@ export default class EditorQuill extends LightningElement {
 
         // Apply pending content if any
         if (this._pendingContent !== null) {
-            this.quillInstance.root.innerHTML = this._pendingContent;
+            this.quillInstance.clipboard.dangerouslyPasteHTML(0, this._pendingContent);
             this._pendingContent = null;
         }
 
@@ -238,11 +238,16 @@ export default class EditorQuill extends LightningElement {
             return;
         }
 
-        const previousContent = this.quillInstance.root.innerHTML;
-        this.quillInstance.root.innerHTML = html || '';
+        const previousLength = this.quillInstance.root.innerHTML.length;
+
+        // Clear existing content and use clipboard to properly parse HTML
+        this.quillInstance.setContents([]);
+        if (html) {
+            this.quillInstance.clipboard.dangerouslyPasteHTML(0, html);
+        }
 
         this.fireEvent('content-set', 'api', {
-            previousLength: previousContent.length,
+            previousLength,
             newLength: (html || '').length
         });
     }
