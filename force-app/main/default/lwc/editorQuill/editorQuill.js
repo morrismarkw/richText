@@ -77,6 +77,7 @@ export default class EditorQuill extends LightningElement {
                     [{ color: [] }, { background: [] }],
                     [{ list: 'ordered' }, { list: 'bullet' }],
                     [{ indent: '-1' }, { indent: '+1' }],
+                    ['blockquote', 'code-block'],
                     ['link', 'image'],
                     ['clean']
                 ]
