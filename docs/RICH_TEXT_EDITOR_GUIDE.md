@@ -646,6 +646,184 @@ function sanitizeForQuill(html) {
 
 ---
 
+## Paste Interception for Component Preservation
+
+A key workflow consideration: users may paste content from external sources (Word, Excel, web pages) that contains unsupported elements. The clipboard module can intercept these and convert them to component placeholders automatically.
+
+### Complete Paste Handling Implementation
+
+```javascript
+// Component registry (stored in Components__c field)
+const componentRegistry = {};
+
+// Helper to generate UUIDs
+function generateUUID() {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        const r = Math.random() * 16 | 0;
+        const v = c === 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+    });
+}
+
+// Configure Quill with paste interception
+const quill = new Quill('#editor', {
+    theme: 'snow',
+    modules: {
+        toolbar: [...],
+        clipboard: {
+            matchers: [
+                // Intercept pasted tables
+                ['TABLE', (node, delta) => {
+                    const id = generateUUID();
+                    componentRegistry[id] = {
+                        type: 'TABLE',
+                        html: node.outerHTML,
+                        created: new Date().toISOString(),
+                        source: 'paste'
+                    };
+                    // Return a Delta that inserts the component placeholder
+                    return new Delta().insert({
+                        'component-placeholder': { id: id, type: 'TABLE' }
+                    });
+                }],
+
+                // Intercept styled divs (often from Word)
+                ['DIV', (node, delta) => {
+                    // Check if it has significant styling
+                    if (node.style.cssText || node.className) {
+                        const id = generateUUID();
+                        componentRegistry[id] = {
+                            type: 'STYLED_BLOCK',
+                            html: node.outerHTML,
+                            created: new Date().toISOString(),
+                            source: 'paste'
+                        };
+                        return new Delta().insert({
+                            'component-placeholder': { id: id, type: 'STYLED_BLOCK' }
+                        });
+                    }
+                    // Otherwise, let Quill handle it normally
+                    return delta;
+                }],
+
+                // Strip style attributes from allowed elements
+                [Node.ELEMENT_NODE, (node, delta) => {
+                    // Remove inline styles that Quill can't handle
+                    if (node.style) {
+                        node.removeAttribute('style');
+                    }
+                    return delta;
+                }]
+            ]
+        }
+    }
+});
+```
+
+### Handling Paste from Different Sources
+
+| Source | Common Issues | Handling Strategy |
+|--------|---------------|-------------------|
+| **Microsoft Word** | Tables, styled spans, custom fonts, embedded objects | Convert tables to placeholders, strip styles |
+| **Microsoft Excel** | Tables with merged cells, formulas shown as text | Convert entire table to placeholder |
+| **Web Pages** | Divs, spans, CSS classes, inline styles | Strip classes/styles, convert complex layouts to placeholders |
+| **Google Docs** | Spans with inline styles, custom fonts | Strip styles, preserve semantic markup |
+| **PDF Copy** | Often loses structure, may have weird spacing | May need manual cleanup |
+
+### User Notification on Paste
+
+```javascript
+quill.on('text-change', (delta, oldDelta, source) => {
+    if (source === 'user') {
+        // Check if any component placeholders were just inserted
+        delta.ops.forEach(op => {
+            if (op.insert && op.insert['component-placeholder']) {
+                const type = op.insert['component-placeholder'].type;
+                showToast(`Complex ${type.toLowerCase()} preserved as component`);
+            }
+        });
+    }
+});
+```
+
+---
+
+## Salesforce Platform Considerations
+
+### Locker Service / Lightning Web Security (LWS)
+
+Salesforce enforces security restrictions on Lightning components:
+
+| Restriction | Impact | Workaround |
+|-------------|--------|------------|
+| **DOM Isolation** | Can't access other components' DOM | Use events for cross-component communication |
+| **iframe srcdoc** | May be blocked or restricted | Use `lightning-formatted-rich-text` instead |
+| **eval() / Function()** | Blocked | Pre-compile any dynamic code |
+| **Global window access** | Limited | Use Quill's built-in APIs |
+| **External scripts** | Must be in static resources | Upload Quill to static resource |
+
+### Loading Quill in LWC
+
+```javascript
+import { loadScript, loadStyle } from 'lightning/platformResourceLoader';
+import QUILL from '@salesforce/resourceUrl/quilljs';
+
+async connectedCallback() {
+    try {
+        await Promise.all([
+            loadStyle(this, QUILL + '/quill.snow.css'),
+            loadScript(this, QUILL + '/quill.min.js')
+        ]);
+        // Quill is now available as window.Quill
+        this.initializeQuill();
+    } catch (error) {
+        console.error('Failed to load Quill:', error);
+    }
+}
+```
+
+### Static Resource Structure
+
+```
+quilljs.zip/
+├── quill.min.js          # Core Quill library
+├── quill.snow.css        # Snow theme styles
+├── quill.bubble.css      # Bubble theme styles (optional)
+└── quill.core.css        # Core styles
+```
+
+### Content Security Considerations
+
+```javascript
+// Always sanitize before rendering in Salesforce
+// lightning-formatted-rich-text does this automatically
+
+// For custom rendering, use DOMPurify
+import DOMPurify from 'dompurify';  // Add to static resource
+
+function safeRender(html) {
+    return DOMPurify.sanitize(html, {
+        ALLOWED_TAGS: ['p', 'h1', 'h2', 'h3', 'strong', 'em', 'u', 'a', 'ul', 'ol', 'li', 'img', 'table', 'tr', 'td', 'th', 'br'],
+        ALLOWED_ATTR: ['href', 'src', 'alt', 'border', 'cellpadding', 'cellspacing']
+    });
+}
+```
+
+### Field Size Limits
+
+| Field Type | Max Size | Use Case |
+|------------|----------|----------|
+| `Rich Text Area` | 131,072 chars | Standard rich text storage |
+| `Long Text Area` | 131,072 chars | HTML storage, component registry JSON |
+| `Text Area` | 255 chars | Not suitable for HTML |
+
+For very large documents, consider:
+- Storing in Files (ContentVersion)
+- Compressing the HTML
+- Splitting into chunks with references
+
+---
+
 ## Key Constraints for AI Agents
 
 1. **Never assume Quill can render arbitrary HTML** - Always validate against the supported elements list
@@ -667,4 +845,6 @@ function sanitizeForQuill(html) {
 | Version | Date | Changes |
 |---------|------|---------|
 | 1.0 | 2025-01-25 | Initial documentation |
+| 1.1 | 2025-01-25 | Added Custom Blot pattern, Component Editor Dialog, Quill features reference |
+| 1.2 | 2025-01-25 | Added Paste Interception patterns, Salesforce platform considerations (Locker Service, LWS, static resources) |
 
