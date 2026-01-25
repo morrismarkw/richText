@@ -3,7 +3,7 @@
         <h2 slot="title">
             <lightning-icon icon-name="custom:custom63" size="small" class="slds-m-right_small"></lightning-icon>
             Rich Text Editor Evaluation
-            <span class="version-badge">v3.4.1</span>
+            <span class="version-badge">v3.5.0</span>
         </h2>
 
         <div slot="actions">
@@ -28,89 +28,80 @@
                 <lightning-tabset active-tab-value={activeTab} onselect={handleTabSelect}>
                     <!-- Standard: Salesforce lightning-input-rich-text -->
                     <lightning-tab label="Standard" value="standard">
-                        <div class="editor-tab-content">
+                        <div class="tab-content">
                             <div class="tab-actions">
                                 <lightning-button-group>
                                     <lightning-button label="Load" icon-name="utility:download" onclick={handleStandardLoad}></lightning-button>
                                     <lightning-button label="Inject Sample" icon-name="utility:paste" onclick={handleStandardInject}></lightning-button>
                                     <lightning-button label="Clear" icon-name="utility:clear" onclick={handleStandardClear}></lightning-button>
-                                    <lightning-button label="Copy HTML" icon-name="utility:copy" onclick={handleStandardCopy}></lightning-button>
                                 </lightning-button-group>
                             </div>
-                            <div class="editor-preview-stack">
-                                <div class="editor-pane">
-                                    <c-editor-standard
-                                        oneditorevent={handleEditorEvent}
-                                        oncontentchange={handleStandardContentChange}>
-                                    </c-editor-standard>
-                                </div>
-                                <div class="preview-pane">
-                                    <lightning-formatted-rich-text value={standardPreviewContent}></lightning-formatted-rich-text>
-                                </div>
-                            </div>
+                            <c-editor-standard
+                                oneditorevent={handleEditorEvent}
+                                oncontentchange={handleStandardContentChange}>
+                            </c-editor-standard>
                         </div>
                     </lightning-tab>
 
                     <!-- Quill: Quill editor as sub-component -->
                     <lightning-tab label="Quill" value="quill">
-                        <div class="editor-tab-content">
+                        <div class="tab-content">
                             <div class="tab-actions">
                                 <lightning-button-group>
                                     <lightning-button label="Load" icon-name="utility:download" onclick={handleQuillLoad}></lightning-button>
                                     <lightning-button label="Inject Sample" icon-name="utility:paste" onclick={handleQuillInject}></lightning-button>
                                     <lightning-button label="Clear" icon-name="utility:clear" onclick={handleQuillClear}></lightning-button>
-                                    <lightning-button label="Copy HTML" icon-name="utility:copy" onclick={handleQuillCopy}></lightning-button>
                                 </lightning-button-group>
                             </div>
-                            <div class="editor-preview-stack">
-                                <div class="editor-pane">
-                                    <c-editor-quill
-                                        oneditorevent={handleEditorEvent}
-                                        oncontentchange={handleQuillContentChange}>
-                                    </c-editor-quill>
-                                </div>
-                                <div class="preview-pane">
-                                    <lightning-formatted-rich-text value={quillPreviewContent}></lightning-formatted-rich-text>
-                                </div>
-                            </div>
+                            <c-editor-quill
+                                oneditorevent={handleEditorEvent}
+                                oncontentchange={handleQuillContentChange}>
+                            </c-editor-quill>
                         </div>
                     </lightning-tab>
 
-                    <!-- Source: iframe preview + HTML source -->
-                    <lightning-tab label="Source" value="source">
-                        <div class="editor-tab-content">
+                    <!-- Preview: Rendered HTML view -->
+                    <lightning-tab label="Preview" value="preview">
+                        <div class="tab-content">
                             <div class="tab-actions">
                                 <lightning-button-group>
                                     <lightning-button
                                         label="Standard"
-                                        icon-name="utility:lightning_extension"
+                                        variant={previewStandardVariant}
+                                        onclick={handlePreviewSelectStandard}></lightning-button>
+                                    <lightning-button
+                                        label="Quill"
+                                        variant={previewQuillVariant}
+                                        onclick={handlePreviewSelectQuill}></lightning-button>
+                                </lightning-button-group>
+                                <lightning-button-group class="slds-m-left_medium">
+                                    <lightning-button label="Refresh" icon-name="utility:refresh" onclick={handleRefreshPreview}></lightning-button>
+                                </lightning-button-group>
+                            </div>
+                            <lightning-formatted-rich-text value={activePreviewContent}></lightning-formatted-rich-text>
+                        </div>
+                    </lightning-tab>
+
+                    <!-- Source: HTML source view -->
+                    <lightning-tab label="Source" value="source">
+                        <div class="tab-content">
+                            <div class="tab-actions">
+                                <lightning-button-group>
+                                    <lightning-button
+                                        label="Standard"
                                         variant={sourceStandardVariant}
                                         onclick={handleSourceSelectStandard}></lightning-button>
                                     <lightning-button
                                         label="Quill"
-                                        icon-name="utility:edit"
                                         variant={sourceQuillVariant}
                                         onclick={handleSourceSelectQuill}></lightning-button>
                                 </lightning-button-group>
                                 <lightning-button-group class="slds-m-left_medium">
-                                    <lightning-button label="Copy HTML" icon-name="utility:copy" onclick={handleCopyActiveSource}></lightning-button>
+                                    <lightning-button label="Copy" icon-name="utility:copy" onclick={handleCopyActiveSource}></lightning-button>
                                     <lightning-button label="Refresh" icon-name="utility:refresh" onclick={handleRefreshSource}></lightning-button>
                                 </lightning-button-group>
                             </div>
-                            <div class="source-stack">
-                                <div class="preview-pane">
-                                    <div class="pane-header">Rendered Preview</div>
-                                    <div class="preview-content">
-                                        <lightning-formatted-rich-text value={activeSourceContent}></lightning-formatted-rich-text>
-                                    </div>
-                                </div>
-                                <div class="source-pane">
-                                    <div class="pane-header">HTML Source</div>
-                                    <div class="source-content">
-                                        <pre class="source-code">{formattedActiveSource}</pre>
-                                    </div>
-                                </div>
-                            </div>
+                            <pre class="source-code">{formattedActiveSource}</pre>
                         </div>
                     </lightning-tab>
                 </lightning-tabset>
@@ -118,7 +109,7 @@
 
             <template if:true={showEventLog}>
                 <div class="event-log-container">
-                    <c-event-log-panel lwc:ref="eventLog" component-version="v3.4.1"></c-event-log-panel>
+                    <c-event-log-panel lwc:ref="eventLog" component-version="v3.5.0"></c-event-log-panel>
                 </div>
             </template>
         </div>

@@ -33,6 +33,7 @@ const SAMPLE_CONTENT = `
 const EDITOR_MAP = {
     standard: 'Standard',
     quill: 'Quill',
+    preview: 'Preview',
     source: 'Source'
 };
 
@@ -46,6 +47,7 @@ export default class RichTextEvaluator extends LightningElement {
     @track toastMessage = '';
     @track toastVariant = 'success';
     @track sourceViewEditor = 'quill'; // Which editor's source to show in Source tab
+    @track previewViewEditor = 'quill'; // Which editor's content to show in Preview tab
 
     // Preview content for each editor
     @track standardPreviewContent = '';
@@ -193,6 +195,20 @@ export default class RichTextEvaluator extends LightningElement {
 
     get activeSourceContent() {
         return this.sourceViewEditor === 'standard'
+            ? this.standardPreviewContent
+            : this.quillPreviewContent;
+    }
+
+    get previewStandardVariant() {
+        return this.previewViewEditor === 'standard' ? 'brand' : 'neutral';
+    }
+
+    get previewQuillVariant() {
+        return this.previewViewEditor === 'quill' ? 'brand' : 'neutral';
+    }
+
+    get activePreviewContent() {
+        return this.previewViewEditor === 'standard'
             ? this.standardPreviewContent
             : this.quillPreviewContent;
     }
@@ -403,6 +419,35 @@ export default class RichTextEvaluator extends LightningElement {
         } else {
             this.showToastMessage('Quill editor is still loading...', 'error');
         }
+    }
+
+    // ==================== PREVIEW TAB ACTIONS ====================
+
+    handlePreviewSelectStandard() {
+        this.previewViewEditor = 'standard';
+        this.logInternalEvent('preview-view-changed', 'interaction', { editor: 'Standard' });
+    }
+
+    handlePreviewSelectQuill() {
+        this.previewViewEditor = 'quill';
+        this.logInternalEvent('preview-view-changed', 'interaction', { editor: 'Quill' });
+    }
+
+    handleRefreshPreview() {
+        const standardEditor = this.template.querySelector('c-editor-standard');
+        const quillEditor = this.template.querySelector('c-editor-quill');
+
+        if (standardEditor) {
+            this.standardPreviewContent = standardEditor.getContent();
+        }
+        if (quillEditor && quillEditor.getIsLoaded()) {
+            this.quillPreviewContent = quillEditor.getContent();
+        }
+
+        this.logInternalEvent('preview-refreshed', 'api', {
+            editor: this.previewViewEditor
+        });
+        this.showToastMessage('Preview refreshed', 'success');
     }
 
     // ==================== SOURCE TAB ACTIONS ====================
