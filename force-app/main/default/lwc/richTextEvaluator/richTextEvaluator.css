@@ -28,7 +28,7 @@
 
 .main-container {
     display: flex;
-    height: 600px;
+    min-height: 400px;
     gap: 1rem;
     padding: 1rem;
     background: var(--cosmos-background-default);
@@ -56,7 +56,6 @@
 }
 
 .editor-tab-content {
-    height: 450px;
     padding: 0.75rem;
 }
 
@@ -112,33 +111,18 @@
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
-    height: calc(100% - 50px);
 }
 
 .editor-pane {
-    flex: 1;
     display: flex;
     flex-direction: column;
-    min-height: 0;
-    overflow: hidden;
 }
 
 .preview-pane {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    min-height: 0;
     border: 1px solid var(--cosmos-border-color);
     border-radius: var(--cosmos-border-radius);
-    overflow: auto;
     background: var(--cosmos-background-alt);
     padding: 12px 16px;
-}
-
-.editor-pane > c-editor-standard,
-.editor-pane > c-editor-quill {
-    flex: 1;
-    min-height: 0;
 }
 
 /* Source pane header */
