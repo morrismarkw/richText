@@ -25,13 +25,11 @@ export default class EditorQuill extends LightningElement {
 
     async connectedCallback() {
         try {
-            console.log('[Quill] connectedCallback - loading scripts');
             await Promise.all([
                 loadStyle(this, QUILL + '/quill.snow.css'),
                 loadScript(this, QUILL + '/quill.min.js')
             ]);
             this._scriptsLoaded = true;
-            console.log('[Quill] Scripts loaded successfully');
 
             // Try to initialize (may fail if not rendered yet)
             this.initializeQuill();
@@ -44,24 +42,20 @@ export default class EditorQuill extends LightningElement {
     renderedCallback() {
         // If scripts are loaded but Quill isn't initialized, try now
         if (this._scriptsLoaded && !this._initAttempted) {
-            console.log('[Quill] renderedCallback - attempting init');
             this.initializeQuill();
         }
     }
 
     initializeQuill() {
         if (this.isLoaded) {
-            console.log('[Quill] Already initialized');
             return;
         }
 
         this._initAttempted = true;
         // Use querySelector for reliability - refs can be unreliable in certain render states
         const container = this.template.querySelector('.quill-container');
-        console.log('[Quill] initializeQuill - container:', container);
 
         if (!container) {
-            console.log('[Quill] Container not found, will retry on next render');
             this._initAttempted = false; // Allow retry
             return;
         }

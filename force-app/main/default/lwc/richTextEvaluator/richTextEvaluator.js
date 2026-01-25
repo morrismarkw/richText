@@ -61,8 +61,11 @@ export default class RichTextEvaluator extends LightningElement {
                 loadScript(this, QUILL + '/quill.min.js')
             ]);
             this._quillScriptsLoaded = true;
+            this.logInternalEvent('quill-scripts-loaded', 'lifecycle', { success: true });
         } catch (error) {
-            console.error('[RichTextEvaluator] Failed to load Quill:', error);
+            this.logInternalEvent('quill-scripts-load-error', 'lifecycle', {
+                error: error.message || 'Unknown error'
+            });
         }
     }
 
