@@ -167,6 +167,385 @@ Rich_Text_Document__c {
 
 ---
 
+## Custom Blot Pattern (Recommended)
+
+Instead of showing raw `{{COMPONENT:TABLE:uuid}}` text in Quill, use a **Custom Blot** to render placeholders as visual, non-editable badges. This is the officially supported Quill extension mechanism.
+
+### What is a Blot?
+
+Blots are the fundamental building blocks of Quill's document model (called "Parchment"). Every element in Quill is a Blot:
+- Paragraphs, headers → Block Blots
+- Bold, italic, links → Inline Blots
+- Images, videos → Embed Blots
+
+**Custom Blots are not a hack** - they are the intended way to extend Quill.
+
+### Component Placeholder Blot
+
+```javascript
+const BlockEmbed = Quill.import('blots/block/embed');
+
+class ComponentPlaceholder extends BlockEmbed {
+    static blotName = 'component-placeholder';
+    static tagName = 'div';
+    static className = 'ql-component-placeholder';
+
+    static create(value) {
+        const node = super.create();
+        node.setAttribute('data-component-id', value.id);
+        node.setAttribute('data-component-type', value.type);
+        node.setAttribute('contenteditable', 'false');
+
+        // Render as a styled badge
+        node.innerHTML = `
+            <span class="component-icon">${this.getIcon(value.type)}</span>
+            <span class="component-label">${value.type}</span>
+            <button class="component-edit-btn" data-action="edit">Edit</button>
+            <button class="component-delete-btn" data-action="delete">×</button>
+        `;
+        return node;
+    }
+
+    static value(node) {
+        return {
+            id: node.getAttribute('data-component-id'),
+            type: node.getAttribute('data-component-type')
+        };
+    }
+
+    static getIcon(type) {
+        const icons = {
+            'TABLE': '📊',
+            'CHART': '📈',
+            'CODE': '💻',
+            'RAW_HTML': '🔧'
+        };
+        return icons[type] || '📦';
+    }
+}
+
+// Register the Blot
+Quill.register(ComponentPlaceholder);
+```
+
+### Blot Styling (CSS)
+
+```css
+.ql-component-placeholder {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    margin: 4px 0;
+    background: #f0f4f8;
+    border: 1px solid #c9d4e0;
+    border-radius: 6px;
+    font-size: 13px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.ql-component-placeholder:hover {
+    background: #e4eaf0;
+}
+
+.component-edit-btn {
+    padding: 2px 8px;
+    background: #0176d3;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.component-delete-btn {
+    padding: 2px 6px;
+    background: transparent;
+    color: #706e6b;
+    border: none;
+    cursor: pointer;
+}
+```
+
+### Visual Result in Editor
+
+```
+┌──────────────────────────────────────────────────────────┐
+│  Quill Editor                                            │
+│                                                          │
+│  Here is the quarterly data:                             │
+│                                                          │
+│  ┌────────────────────────────────────────┐             │
+│  │ 📊 TABLE          [Edit] [×]           │  ← Blot     │
+│  └────────────────────────────────────────┘             │
+│                                                          │
+│  As you can see, revenue increased by 15%.               │
+│                                                          │
+└──────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Component Editor Dialog Pattern
+
+Each Blot type can have its own editor dialog for modifying the embedded content.
+
+### Dialog Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Edit Table Component                              [×]      │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  ┌─────────────────────┐  ┌───────────────────────────────┐│
+│  │ HTML Source         │  │ Preview                       ││
+│  │                     │  │ (lightning-formatted-rich-    ││
+│  │ <table>             │  │  text or iframe)              ││
+│  │   <tr>              │  │                               ││
+│  │     <th>Q1</th>     │  │  ┌──────┬──────┬──────┐      ││
+│  │     <th>Q2</th>     │  │  │  Q1  │  Q2  │  Q3  │      ││
+│  │   </tr>             │  │  ├──────┼──────┼──────┤      ││
+│  │   <tr>              │  │  │ $10K │ $12K │ $15K │      ││
+│  │     <td>$10K</td>   │  │  └──────┴──────┴──────┘      ││
+│  │   </tr>             │  │                               ││
+│  │ </table>            │  │                               ││
+│  └─────────────────────┘  └───────────────────────────────┘│
+│                                                             │
+│                                    [Cancel]  [Save]         │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Type-Specific Dialogs
+
+| Blot Type | Editor Experience |
+|-----------|-------------------|
+| `TABLE` | Visual table builder OR raw HTML editor |
+| `CODE` | Code editor with syntax highlighting |
+| `CHART` | Chart configuration UI |
+| `RAW_HTML` | Generic HTML textarea + preview |
+
+### LWC Component Structure
+
+```
+force-app/main/default/lwc/
+├── editorQuill/                    # Main Quill editor with Blot
+├── componentEditorDialog/          # Modal wrapper
+│   ├── componentEditorDialog.html
+│   ├── componentEditorDialog.js
+│   └── componentEditorDialog.css
+├── componentEditorTable/           # Table-specific editor
+├── componentEditorCode/            # Code-specific editor
+└── componentEditorRawHtml/         # Generic HTML editor
+```
+
+### Dialog Flow
+
+```javascript
+// In editorQuill.js
+
+handleBlotEditClick(componentId, componentType) {
+    const componentData = this.componentRegistry[componentId];
+
+    // Open the appropriate dialog
+    this.openComponentDialog({
+        id: componentId,
+        type: componentType,
+        html: componentData.html,
+        onSave: (updatedHtml) => {
+            this.componentRegistry[componentId].html = updatedHtml;
+            this.showToast('Component updated');
+        },
+        onDelete: () => {
+            delete this.componentRegistry[componentId];
+            this.removeBlotFromEditor(componentId);
+        }
+    });
+}
+```
+
+---
+
+## Quill Features Reference
+
+### Core Architecture
+
+| Concept | Description |
+|---------|-------------|
+| **Delta** | JSON format representing document content and changes |
+| **Parchment** | Document model library; Blots are its building blocks |
+| **Modules** | Pluggable functionality (toolbar, keyboard, clipboard, history) |
+| **Formats** | Text formatting definitions (bold, italic, custom) |
+| **Themes** | Visual themes (Snow = toolbar, Bubble = tooltip) |
+
+### Modules (Extensible)
+
+#### Toolbar Module
+```javascript
+const toolbarOptions = [
+    ['bold', 'italic', 'underline', 'strike'],
+    ['blockquote', 'code-block'],
+    [{ 'header': 1 }, { 'header': 2 }],
+    [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+    [{ 'indent': '-1'}, { 'indent': '+1' }],
+    ['link', 'image'],
+    ['clean']
+];
+
+const quill = new Quill('#editor', {
+    modules: { toolbar: toolbarOptions },
+    theme: 'snow'
+});
+```
+
+#### Keyboard Module (Custom Shortcuts)
+```javascript
+const quill = new Quill('#editor', {
+    modules: {
+        keyboard: {
+            bindings: {
+                // Ctrl+Shift+T inserts a component placeholder
+                insertComponent: {
+                    key: 'T',
+                    shortKey: true,
+                    shiftKey: true,
+                    handler: function(range) {
+                        this.quill.insertEmbed(range.index, 'component-placeholder', {
+                            id: generateUUID(),
+                            type: 'TABLE'
+                        });
+                    }
+                }
+            }
+        }
+    }
+});
+```
+
+#### Clipboard Module (Paste Handling)
+```javascript
+// Customize how pasted content is processed
+const quill = new Quill('#editor', {
+    modules: {
+        clipboard: {
+            matchers: [
+                // Convert pasted tables to component placeholders
+                ['TABLE', (node, delta) => {
+                    const id = generateUUID();
+                    componentRegistry[id] = { type: 'TABLE', html: node.outerHTML };
+                    return new Delta().insert({ 'component-placeholder': { id, type: 'TABLE' } });
+                }]
+            ]
+        }
+    }
+});
+```
+
+#### History Module (Undo/Redo)
+```javascript
+// Built-in, enabled by default
+quill.history.undo();
+quill.history.redo();
+
+// Configuration
+modules: {
+    history: {
+        delay: 1000,      // Merge changes within 1 second
+        maxStack: 100,    // Max undo stack size
+        userOnly: true    // Only track user changes, not API changes
+    }
+}
+```
+
+### Delta Format
+
+Quill's internal document format. Useful for tracking changes or collaborative editing.
+
+```javascript
+// Get content as Delta
+const delta = quill.getContents();
+// { ops: [{ insert: 'Hello ' }, { insert: 'World', attributes: { bold: true } }] }
+
+// Set content from Delta
+quill.setContents(delta);
+
+// Get changes between two deltas
+const diff = oldDelta.diff(newDelta);
+
+// Apply changes
+quill.updateContents(diff);
+```
+
+### Events
+
+```javascript
+// Content changed
+quill.on('text-change', (delta, oldDelta, source) => {
+    // source: 'user' or 'api'
+    console.log('Content changed:', delta);
+});
+
+// Selection changed
+quill.on('selection-change', (range, oldRange, source) => {
+    if (range) {
+        console.log('Cursor at:', range.index);
+    } else {
+        console.log('Editor lost focus');
+    }
+});
+
+// Any change (text or selection)
+quill.on('editor-change', (eventName, ...args) => {
+    // eventName: 'text-change' or 'selection-change'
+});
+```
+
+### Useful API Methods
+
+```javascript
+// Content
+quill.getText();                    // Plain text
+quill.getContents();               // Delta
+quill.setContents(delta);          // Replace all
+quill.updateContents(delta);       // Apply changes
+quill.getHTML();                   // Not built-in, use: quill.root.innerHTML
+
+// Selection
+quill.getSelection();              // { index, length }
+quill.setSelection(index, length);
+quill.focus();
+quill.blur();
+
+// Formatting
+quill.format('bold', true);        // Apply to selection
+quill.formatLine(0, 10, 'header', 1);
+quill.removeFormat(0, 10);
+
+// Insert
+quill.insertText(index, 'text', { bold: true });
+quill.insertEmbed(index, 'image', 'https://...');
+quill.insertEmbed(index, 'component-placeholder', { id, type });
+
+// Delete
+quill.deleteText(index, length);
+```
+
+### Themes
+
+| Theme | Description |
+|-------|-------------|
+| **Snow** | Classic toolbar above editor |
+| **Bubble** | Tooltip-style toolbar on selection |
+
+```javascript
+// Snow theme (default)
+new Quill('#editor', { theme: 'snow' });
+
+// Bubble theme
+new Quill('#editor', { theme: 'bubble' });
+```
+
+---
+
 ## PDF to HTML Conversion Guidelines
 
 When converting PDF documents to HTML for Quill editing:

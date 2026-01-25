@@ -144,7 +144,7 @@
     gap: 0.75rem;
 }
 
-.iframe-pane {
+.source-stack .preview-pane {
     display: flex;
     flex-direction: column;
     border: 1px solid var(--cosmos-border-color);
@@ -153,11 +153,14 @@
     background: var(--cosmos-background-default);
 }
 
-.html-iframe {
-    width: 100%;
-    min-height: 200px;
-    border: none;
-    background: white;
+.source-stack .preview-pane .pane-header {
+    flex-shrink: 0;
+}
+
+.source-stack .preview-content {
+    padding: 12px 16px;
+    overflow: auto;
+    max-height: 250px;
 }
 
 .source-pane {

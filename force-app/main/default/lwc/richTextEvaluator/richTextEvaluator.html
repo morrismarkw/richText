@@ -3,7 +3,7 @@
         <h2 slot="title">
             <lightning-icon icon-name="custom:custom63" size="small" class="slds-m-right_small"></lightning-icon>
             Rich Text Editor Evaluation
-            <span class="version-badge">v3.4.0</span>
+            <span class="version-badge">v3.4.1</span>
         </h2>
 
         <div slot="actions">
@@ -98,14 +98,11 @@
                                 </lightning-button-group>
                             </div>
                             <div class="source-stack">
-                                <div class="iframe-pane">
-                                    <div class="pane-header">Rendered Preview (iframe)</div>
-                                    <iframe
-                                        lwc:ref="sourceIframe"
-                                        class="html-iframe"
-                                        sandbox="allow-same-origin"
-                                        title="HTML Preview">
-                                    </iframe>
+                                <div class="preview-pane">
+                                    <div class="pane-header">Rendered Preview</div>
+                                    <div class="preview-content">
+                                        <lightning-formatted-rich-text value={activeSourceContent}></lightning-formatted-rich-text>
+                                    </div>
                                 </div>
                                 <div class="source-pane">
                                     <div class="pane-header">HTML Source</div>
@@ -121,7 +118,7 @@
 
             <template if:true={showEventLog}>
                 <div class="event-log-container">
-                    <c-event-log-panel lwc:ref="eventLog" component-version="v3.4.0"></c-event-log-panel>
+                    <c-event-log-panel lwc:ref="eventLog" component-version="v3.4.1"></c-event-log-panel>
                 </div>
             </template>
         </div>
