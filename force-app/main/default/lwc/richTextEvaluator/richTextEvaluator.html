@@ -3,7 +3,7 @@
         <h2 slot="title">
             <lightning-icon icon-name="custom:custom63" size="small" class="slds-m-right_small"></lightning-icon>
             Rich Text Editor Evaluation
-            <span class="version-badge">v3.3.5</span>
+            <span class="version-badge">v3.3.6</span>
         </h2>
 
         <div slot="actions">
@@ -83,12 +83,39 @@
                             </div>
                         </div>
                     </lightning-tab>
+
+                    <!-- Source: View HTML source from both editors -->
+                    <lightning-tab label="Source" value="source">
+                        <div class="editor-tab-content">
+                            <div class="tab-actions">
+                                <lightning-button-group>
+                                    <lightning-button label="Copy Standard" icon-name="utility:copy" onclick={handleCopyStandardSource}></lightning-button>
+                                    <lightning-button label="Copy Quill" icon-name="utility:copy" onclick={handleCopyQuillSource}></lightning-button>
+                                    <lightning-button label="Refresh" icon-name="utility:refresh" onclick={handleRefreshSource}></lightning-button>
+                                </lightning-button-group>
+                            </div>
+                            <div class="source-split">
+                                <div class="source-pane">
+                                    <div class="pane-header">Standard Source</div>
+                                    <div class="source-content">
+                                        <pre class="source-code">{formattedStandardSource}</pre>
+                                    </div>
+                                </div>
+                                <div class="source-pane">
+                                    <div class="pane-header">Quill Source</div>
+                                    <div class="source-content">
+                                        <pre class="source-code">{formattedQuillSource}</pre>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </lightning-tab>
                 </lightning-tabset>
             </div>
 
             <template if:true={showEventLog}>
                 <div class="event-log-container">
-                    <c-event-log-panel lwc:ref="eventLog" component-version="v3.3.5"></c-event-log-panel>
+                    <c-event-log-panel lwc:ref="eventLog" component-version="v3.3.6"></c-event-log-panel>
                 </div>
             </template>
         </div>

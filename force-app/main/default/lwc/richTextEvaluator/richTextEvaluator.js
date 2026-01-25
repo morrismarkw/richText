@@ -32,7 +32,8 @@ const SAMPLE_CONTENT = `
 
 const EDITOR_MAP = {
     standard: 'Standard',
-    quill: 'Quill'
+    quill: 'Quill',
+    source: 'Source'
 };
 
 export default class RichTextEvaluator extends LightningElement {
@@ -164,6 +165,14 @@ export default class RichTextEvaluator extends LightningElement {
 
     get toastIcon() {
         return this.toastVariant === 'success' ? 'utility:success' : 'utility:error';
+    }
+
+    get formattedStandardSource() {
+        return this.formatHtml(this.standardPreviewContent);
+    }
+
+    get formattedQuillSource() {
+        return this.formatHtml(this.quillPreviewContent);
     }
 
     // ==================== EVENT HANDLERS ====================
@@ -374,7 +383,86 @@ export default class RichTextEvaluator extends LightningElement {
         }
     }
 
+    // ==================== SOURCE TAB ACTIONS ====================
+
+    handleCopyStandardSource() {
+        const standardEditor = this.template.querySelector('c-editor-standard');
+        const content = standardEditor ? standardEditor.getContent() : this.standardPreviewContent;
+        this.copyToClipboard(content, 'Standard Source');
+    }
+
+    handleCopyQuillSource() {
+        const quillEditor = this.template.querySelector('c-editor-quill');
+        const content = quillEditor && quillEditor.getIsLoaded() ? quillEditor.getContent() : this.quillPreviewContent;
+        this.copyToClipboard(content, 'Quill Source');
+    }
+
+    handleRefreshSource() {
+        // Refresh source from both editors
+        const standardEditor = this.template.querySelector('c-editor-standard');
+        const quillEditor = this.template.querySelector('c-editor-quill');
+
+        if (standardEditor) {
+            this.standardPreviewContent = standardEditor.getContent();
+        }
+        if (quillEditor && quillEditor.getIsLoaded()) {
+            this.quillPreviewContent = quillEditor.getContent();
+        }
+
+        this.logInternalEvent('source-refreshed', 'api', {
+            standardLength: this.standardPreviewContent?.length || 0,
+            quillLength: this.quillPreviewContent?.length || 0
+        });
+        this.showToastMessage('Source refreshed', 'success');
+    }
+
     // ==================== UTILITY ====================
+
+    formatHtml(html) {
+        if (!html) return '(empty)';
+
+        // Simple HTML formatter - add newlines and indentation
+        let formatted = html;
+        const indent = '  ';
+        let indentLevel = 0;
+
+        // Add newlines before and after tags
+        formatted = formatted
+            // Remove existing whitespace between tags
+            .replace(/>\s+</g, '><')
+            // Add newline before opening tags (except inline tags)
+            .replace(/<(?!\/?(span|strong|em|b|i|u|a|code|br)[ >])/gi, '\n<')
+            // Add newline after closing tags (except inline tags)
+            .replace(/<\/((?!span|strong|em|b|i|u|a|code)[^>]+)>/gi, '</$1>\n');
+
+        // Process line by line to add indentation
+        const lines = formatted.split('\n').filter(line => line.trim());
+        const result = [];
+
+        for (const line of lines) {
+            const trimmed = line.trim();
+
+            // Decrease indent for closing tags
+            if (trimmed.startsWith('</')) {
+                indentLevel = Math.max(0, indentLevel - 1);
+            }
+
+            // Add the line with current indentation
+            result.push(indent.repeat(indentLevel) + trimmed);
+
+            // Increase indent for opening tags (that aren't self-closing)
+            if (trimmed.match(/^<[^\/!][^>]*[^\/]>$/) && !trimmed.match(/^<(br|hr|img|input|meta|link)/i)) {
+                indentLevel++;
+            }
+
+            // Handle self-closing tags or tags that open and close on same line
+            if (trimmed.match(/<[^>]+>.*<\/[^>]+>/)) {
+                // Tag opens and closes on same line, no indent change
+            }
+        }
+
+        return result.join('\n');
+    }
 
     copyToClipboard(content, editorName) {
         if (navigator.clipboard) {
