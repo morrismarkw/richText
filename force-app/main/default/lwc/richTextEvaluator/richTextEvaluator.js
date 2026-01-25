@@ -45,6 +45,10 @@ export default class RichTextEvaluator extends LightningElement {
     @track toastMessage = '';
     @track toastVariant = 'success';
 
+    // Preview content for each editor
+    @track standardPreviewContent = '';
+    @track quillPreviewContent = '';
+
     _recordContent = '';
     _recordEditorType = '';
     _contentPushedToEditors = false;
@@ -90,11 +94,17 @@ export default class RichTextEvaluator extends LightningElement {
 
         // Push to Standard
         const standard = this.template.querySelector('c-editor-standard');
-        if (standard) standard.setContent(this._recordContent);
+        if (standard) {
+            standard.setContent(this._recordContent);
+            this.standardPreviewContent = this._recordContent;
+        }
 
         // Push to Quill component
         const quill = this.template.querySelector('c-editor-quill');
-        if (quill) quill.setContent(this._recordContent);
+        if (quill) {
+            quill.setContent(this._recordContent);
+            this.quillPreviewContent = this._recordContent;
+        }
 
         this._contentPushedToEditors = true;
         this.logInternalEvent('content-pushed-all', 'api', {
@@ -110,6 +120,10 @@ export default class RichTextEvaluator extends LightningElement {
         if (data) {
             this._recordContent = data.fields.Content__c?.value || '';
             this._recordEditorType = data.fields.Editor_Type__c?.value || 'Standard';
+
+            // Initialize previews with record content
+            this.standardPreviewContent = this._recordContent;
+            this.quillPreviewContent = this._recordContent;
 
             this.logInternalEvent('record-loaded', 'lifecycle', {
                 recordId: this.recordId,
@@ -191,6 +205,14 @@ export default class RichTextEvaluator extends LightningElement {
         const editor = this.template.querySelector(selector);
         if (editor && typeof editor.setContent === 'function') {
             editor.setContent(this._recordContent);
+
+            // Update preview
+            if (editorName === 'Standard') {
+                this.standardPreviewContent = this._recordContent;
+            } else if (editorName === 'Quill') {
+                this.quillPreviewContent = this._recordContent;
+            }
+
             this.logInternalEvent('content-pushed', 'api', {
                 editor: editorName,
                 contentLength: this._recordContent.length,
@@ -199,9 +221,19 @@ export default class RichTextEvaluator extends LightningElement {
         }
     }
 
-    handleContentChange(event) {
+    // Separate content change handlers for each editor
+    handleStandardContentChange(event) {
         const { content } = event.detail;
         this._recordContent = content;
+        this.standardPreviewContent = content;
+        this.logInternalEvent('preview-updated', 'content', { editor: 'Standard', contentLength: content.length });
+    }
+
+    handleQuillContentChange(event) {
+        const { content } = event.detail;
+        this._recordContent = content;
+        this.quillPreviewContent = content;
+        this.logInternalEvent('preview-updated', 'content', { editor: 'Quill', contentLength: content.length });
     }
 
     async handleSave() {
@@ -264,6 +296,7 @@ export default class RichTextEvaluator extends LightningElement {
         const editor = this.template.querySelector('c-editor-standard');
         if (editor && this._recordContent) {
             editor.setContent(this._recordContent);
+            this.standardPreviewContent = this._recordContent;
             this.logInternalEvent('content-loaded', 'api', { editor: 'Standard', contentLength: this._recordContent.length });
             this.showToastMessage('Content loaded', 'success');
         } else if (!this._recordContent) {
@@ -283,6 +316,7 @@ export default class RichTextEvaluator extends LightningElement {
         const editor = this.template.querySelector('c-editor-standard');
         if (editor) {
             editor.setContent('');
+            this.standardPreviewContent = '';
             this.logInternalEvent('content-cleared', 'api', { editor: 'Standard' });
         }
     }
@@ -300,6 +334,7 @@ export default class RichTextEvaluator extends LightningElement {
         const editor = this.template.querySelector('c-editor-quill');
         if (editor && this._recordContent) {
             editor.setContent(this._recordContent);
+            this.quillPreviewContent = this._recordContent;
             this.logInternalEvent('content-loaded', 'api', { editor: 'Quill', contentLength: this._recordContent.length });
             this.showToastMessage('Content loaded', 'success');
         } else if (!this._recordContent) {
@@ -323,6 +358,7 @@ export default class RichTextEvaluator extends LightningElement {
         const editor = this.template.querySelector('c-editor-quill');
         if (editor && editor.getIsLoaded()) {
             editor.setContent('');
+            this.quillPreviewContent = '';
             this.logInternalEvent('content-cleared', 'api', { editor: 'Quill' });
         } else {
             this.showToastMessage('Quill editor is still loading...', 'error');

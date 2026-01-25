@@ -3,7 +3,7 @@
         <h2 slot="title">
             <lightning-icon icon-name="custom:custom63" size="small" class="slds-m-right_small"></lightning-icon>
             Rich Text Editor Evaluation
-            <span class="version-badge">v3.3.3</span>
+            <span class="version-badge">v3.3.4</span>
         </h2>
 
         <div slot="actions">
@@ -37,10 +37,21 @@
                                     <lightning-button label="Copy HTML" icon-name="utility:copy" onclick={handleStandardCopy}></lightning-button>
                                 </lightning-button-group>
                             </div>
-                            <c-editor-standard
-                                oneditorevent={handleEditorEvent}
-                                oncontentchange={handleContentChange}>
-                            </c-editor-standard>
+                            <div class="editor-preview-split">
+                                <div class="editor-pane">
+                                    <div class="pane-header">Editor</div>
+                                    <c-editor-standard
+                                        oneditorevent={handleEditorEvent}
+                                        oncontentchange={handleStandardContentChange}>
+                                    </c-editor-standard>
+                                </div>
+                                <div class="preview-pane">
+                                    <div class="pane-header">Preview</div>
+                                    <div class="preview-content">
+                                        <lightning-formatted-rich-text value={standardPreviewContent}></lightning-formatted-rich-text>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </lightning-tab>
 
@@ -55,10 +66,21 @@
                                     <lightning-button label="Copy HTML" icon-name="utility:copy" onclick={handleQuillCopy}></lightning-button>
                                 </lightning-button-group>
                             </div>
-                            <c-editor-quill
-                                oneditorevent={handleEditorEvent}
-                                oncontentchange={handleContentChange}>
-                            </c-editor-quill>
+                            <div class="editor-preview-split">
+                                <div class="editor-pane">
+                                    <div class="pane-header">Editor</div>
+                                    <c-editor-quill
+                                        oneditorevent={handleEditorEvent}
+                                        oncontentchange={handleQuillContentChange}>
+                                    </c-editor-quill>
+                                </div>
+                                <div class="preview-pane">
+                                    <div class="pane-header">Preview</div>
+                                    <div class="preview-content">
+                                        <lightning-formatted-rich-text value={quillPreviewContent}></lightning-formatted-rich-text>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </lightning-tab>
                 </lightning-tabset>
@@ -66,7 +88,7 @@
 
             <template if:true={showEventLog}>
                 <div class="event-log-container">
-                    <c-event-log-panel lwc:ref="eventLog" component-version="v3.3.3"></c-event-log-panel>
+                    <c-event-log-panel lwc:ref="eventLog" component-version="v3.3.4"></c-event-log-panel>
                 </div>
             </template>
         </div>
