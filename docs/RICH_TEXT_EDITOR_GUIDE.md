@@ -1648,6 +1648,118 @@ This specification covers:
 
 ---
 
+## Lessons Learned & Implementation Notes
+
+### LWC Textarea Value Binding
+
+**Problem**: The `value` attribute on `<textarea>` doesn't bind reactively in LWC.
+
+**Solution**: Use `renderedCallback` with a pending content pattern:
+
+```javascript
+_pendingContent = null;
+
+renderedCallback() {
+    if (this._pendingContent !== null && this.isOpen) {
+        const textarea = this.template.querySelector('.html-editor');
+        if (textarea) {
+            textarea.value = this._pendingContent;
+            this._pendingContent = null;
+        }
+    }
+}
+
+@api
+open(data) {
+    this._pendingContent = data.html || '';
+    this.isOpen = true;
+}
+```
+
+### Real-Time Preview Updates
+
+**Problem**: Using `onchange` on textarea only fires on blur, not during typing.
+
+**Solution**: Use `oninput` for real-time updates:
+
+```html
+<textarea oninput={handleHtmlChange}></textarea>
+```
+
+### Extracting Nested HTML Elements
+
+**Problem**: Regex can't reliably match nested elements like `<div>` containing other `<div>` tags.
+
+**Solution**: Use depth-counting algorithm:
+
+```javascript
+extractStyledDivs(html) {
+    let depth = 1;
+    let pos = startIndex + openTag.length;
+
+    while (depth > 0 && pos < html.length) {
+        const openMatch = /<div[\s>]/i.exec(remaining);
+        const closeMatch = /<\/div>/i.exec(remaining);
+
+        if (openMatch && openMatch.index < closeMatch.index) {
+            depth++;
+        } else {
+            depth--;
+            if (depth === 0) {
+                // Found matching closing tag
+            }
+        }
+    }
+}
+```
+
+### Quill Strips Styled Pre Tags
+
+**Problem**: Quill converts `<pre style="...">` to `<pre class="ql-syntax">`, losing custom styling.
+
+**Solution**: Extract styled pre tags as CODE_BLOCK components before loading into Quill:
+
+```javascript
+const STYLED_PRE_PATTERN = /<pre\s+[^>]*style="[^"]*"[^>]*>[\s\S]*?<\/pre>/gi;
+```
+
+### Video Responsiveness in Quill
+
+**Problem**: Embedded videos have fixed dimensions.
+
+**Solution**: Add CSS for responsive videos:
+
+```css
+:host .ql-video {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 16 / 9;
+}
+
+:host .ql-editor .ql-video {
+    display: block;
+    max-width: 100%;
+}
+```
+
+### Preview Mode for Blots
+
+**Insight**: Showing the actual source HTML as a preview (instead of a badge icon) gives users better context of what the component contains while still protecting it from Quill's processing.
+
+```javascript
+_defaultDisplayMode = 'preview';  // Shows source HTML as preview
+
+// When extracting components:
+const component = {
+    type: 'TABLE',
+    html: match,
+    preview: match,  // Use source HTML as preview
+    displayMode: this._defaultDisplayMode
+};
+```
+
+---
+
 ## Version History
 
 | Version | Date | Changes |
@@ -1659,4 +1771,5 @@ This specification covers:
 | 1.4 | 2025-01-25 | Added Quill Output Conversion Pattern: dual API (getContent/getConvertedContent), ql-indent to nested lists, data flow diagram |
 | 1.5 | 2025-01-25 | Added Quill Configuration Options: full toolbar reference, formats whitelist, color attributor registration, enable/disable features. Complete HTML converter: alignment, font, size, direction class conversions |
 | 1.6 | 2025-01-26 | Added Component Types Reference (TABLE, STYLED_DIV, BLOCKQUOTE, HR, SIGNATURE, CHOICE_FIELD, ENTRY_FIELD). Added display modes (badge, render, preview). Added Component API documentation. Created separate CONVERTER_SPECIFICATION.md for document conversion |
+| 1.7 | 2025-01-26 | Added Lessons Learned section: LWC textarea binding, oninput vs onchange, nested element extraction, styled pre handling, video responsiveness, preview mode insights |
 
