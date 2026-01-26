@@ -114,6 +114,30 @@
     white-space: pre-wrap;
     word-wrap: break-word;
     tab-size: 2;
-    overflow: auto;
-    max-height: 500px;
+}
+
+/* Registry badge for Quill Blot tab */
+.registry-badge {
+    display: inline-block;
+    margin-left: 12px;
+    padding: 4px 10px;
+    font-size: 12px;
+    font-weight: 500;
+    color: #0176d3;
+    background: #e5f2fc;
+    border-radius: 12px;
+}
+
+/* Dirty indicator */
+.dirty-indicator {
+    display: inline-block;
+    margin-left: 12px;
+    padding: 4px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #b86e00;
+    background: #fef3e0;
+    border-radius: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
 }

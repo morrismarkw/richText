@@ -62,3 +62,15 @@
 :host .ql-container {
     border-color: #dddbda;
 }
+
+/* Make Quill videos responsive/full-width */
+:host .ql-video {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 16 / 9;
+}
+
+:host .ql-editor .ql-video {
+    display: block;
+    max-width: 100%;
+}

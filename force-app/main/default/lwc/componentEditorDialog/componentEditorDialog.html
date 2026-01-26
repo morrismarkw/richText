@@ -1,0 +1,48 @@
+<template>
+    <template if:true={isOpen}>
+        <section role="dialog" tabindex="-1" class="slds-modal slds-fade-in-open">
+            <div class="slds-modal__container">
+                <header class="slds-modal__header">
+                    <button class="slds-button slds-button_icon slds-modal__close slds-button_icon-inverse"
+                            title="Close" onclick={handleCancel}>
+                        <lightning-icon icon-name="utility:close" alternative-text="Close" size="small"></lightning-icon>
+                    </button>
+                    <h2 class="slds-modal__title slds-hyphenate">
+                        <span class="component-icon">{componentIcon}</span>
+                        Edit {componentType} Component
+                    </h2>
+                </header>
+
+                <div class="slds-modal__content slds-p-around_medium">
+                    <div class="editor-layout">
+                        <!-- HTML Source Editor -->
+                        <div class="source-panel">
+                            <h3 class="panel-title">HTML Source</h3>
+                            <textarea class="html-editor"
+                                      value={htmlContent}
+                                      oninput={handleHtmlChange}
+                                      spellcheck="false"></textarea>
+                        </div>
+
+                        <!-- Preview Panel -->
+                        <div class="preview-panel">
+                            <h3 class="panel-title">Preview</h3>
+                            <div class="preview-content">
+                                <lightning-formatted-rich-text value={htmlContent}></lightning-formatted-rich-text>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <footer class="slds-modal__footer">
+                    <lightning-button label="Cancel" onclick={handleCancel}></lightning-button>
+                    <lightning-button label="Delete" variant="destructive" onclick={handleDelete}
+                                      class="slds-m-left_x-small"></lightning-button>
+                    <lightning-button label="Save" variant="brand" onclick={handleSave}
+                                      class="slds-m-left_x-small"></lightning-button>
+                </footer>
+            </div>
+        </section>
+        <div class="slds-backdrop slds-backdrop_open"></div>
+    </template>
+</template>

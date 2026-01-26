@@ -1,0 +1,13 @@
+<template>
+    <div class="editor-wrapper">
+        <div lwc:ref="quillContainer" class="quill-container"></div>
+    </div>
+
+    <!-- Component Editor Dialog -->
+    <c-component-editor-dialog
+        lwc:ref="editorDialog"
+        onsave={handleComponentSave}
+        ondelete={handleComponentDelete}
+        oncancel={handleComponentCancel}>
+    </c-component-editor-dialog>
+</template>

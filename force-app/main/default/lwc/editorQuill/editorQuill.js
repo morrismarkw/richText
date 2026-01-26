@@ -65,21 +65,54 @@ export default class EditorQuill extends LightningElement {
         editorDiv.className = 'quill-editor';
         container.appendChild(editorDiv);
 
-        // Initialize Quill
+        // Register color/background formats to preserve inline styles when loading content
         // eslint-disable-next-line no-undef
+        const Quill = window.Quill;
+        const ColorStyle = Quill.import('attributors/style/color');
+        const BackgroundStyle = Quill.import('attributors/style/background');
+        Quill.register(ColorStyle, true);
+        Quill.register(BackgroundStyle, true);
+
+        // Initialize Quill with all available toolbar options (no formats whitelist = all allowed)
         this.quillInstance = new Quill(editorDiv, {
             theme: 'snow',
             placeholder: 'Enter content here...',
             modules: {
                 toolbar: [
-                    [{ header: [1, 2, 3, false] }],
+                    // Text style
+                    [{ font: [] }],
+                    [{ size: ['small', false, 'large', 'huge'] }],
+                    [{ header: [1, 2, 3, 4, 5, 6, false] }],
+
+                    // Formatting
                     ['bold', 'italic', 'underline', 'strike'],
+                    [{ script: 'sub' }, { script: 'super' }],
+
+                    // Color
                     [{ color: [] }, { background: [] }],
+
+                    // Blocks
+                    ['blockquote', 'code-block'],
+
+                    // Lists & indent
                     [{ list: 'ordered' }, { list: 'bullet' }],
                     [{ indent: '-1' }, { indent: '+1' }],
-                    ['link', 'image'],
+
+                    // Alignment & direction
+                    [{ align: [] }],
+                    [{ direction: 'rtl' }],
+
+                    // Embeds
+                    ['link', 'image', 'video'],
+
+                    // Clear
                     ['clean']
-                ]
+                ],
+                history: {
+                    delay: 1000,
+                    maxStack: 100,
+                    userOnly: true
+                }
             }
         });
 
@@ -108,7 +141,7 @@ export default class EditorQuill extends LightningElement {
     setupEventListeners() {
         const quill = this.quillInstance;
 
-        // Text change events
+        // Text change events - only dispatch for user-initiated changes
         quill.on('text-change', (delta, oldDelta, source) => {
             this.fireEvent('content-change', 'content', {
                 delta: this.sanitizeDelta(delta),
@@ -116,12 +149,23 @@ export default class EditorQuill extends LightningElement {
                 contentLength: quill.getLength()
             });
 
-            this.dispatchEvent(new CustomEvent('contentchange', {
-                detail: {
-                    editor: EDITOR_NAME,
-                    content: quill.root.innerHTML
+            // Only dispatch contentchange for actual user edits, not API/focus changes
+            if (source === 'user') {
+                const rawHtml = quill.root.innerHTML;
+                let convertedHtml = rawHtml;
+                try {
+                    convertedHtml = this.convertToStandardHtml(rawHtml);
+                } catch (e) {
+                    console.error('Quill HTML conversion error:', e);
                 }
-            }));
+                this.dispatchEvent(new CustomEvent('contentchange', {
+                    detail: {
+                        editor: EDITOR_NAME,
+                        content: rawHtml,
+                        convertedContent: convertedHtml
+                    }
+                }));
+            }
         });
 
         // Selection change events
@@ -221,6 +265,200 @@ export default class EditorQuill extends LightningElement {
         };
     }
 
+    // ==================== HTML CONVERSION ====================
+
+    /**
+     * Convert Quill's HTML output to standard HTML
+     * - Converts ql-align-* to text-align styles
+     * - Converts ql-font-* to font-family styles
+     * - Converts ql-size-* to font-size styles
+     * - Converts ql-direction-rtl to dir attribute
+     * - Converts ql-indent-N classes to nested lists
+     * - Removes remaining Quill-specific classes
+     */
+    convertToStandardHtml(html) {
+        if (!html) return '';
+
+        // Create a temporary container to manipulate the DOM
+        const temp = document.createElement('div');
+        temp.innerHTML = html;
+
+        // Convert Quill classes to inline styles BEFORE removing them
+        this.convertAlignmentClasses(temp);
+        this.convertFontClasses(temp);
+        this.convertSizeClasses(temp);
+        this.convertDirectionClasses(temp);
+        this.convertCodeBlocks(temp);
+
+        // Convert indented lists to nested structure
+        this.convertIndentedLists(temp);
+
+        // Remove remaining Quill-specific classes
+        this.removeQuillClasses(temp);
+
+        return temp.innerHTML;
+    }
+
+    /**
+     * Convert ql-align-* classes to text-align styles
+     */
+    convertAlignmentClasses(container) {
+        const alignmentMap = {
+            'ql-align-center': 'center',
+            'ql-align-right': 'right',
+            'ql-align-justify': 'justify'
+            // 'left' is default, no class needed
+        };
+
+        Object.entries(alignmentMap).forEach(([className, alignValue]) => {
+            const elements = container.querySelectorAll(`.${className}`);
+            elements.forEach(el => {
+                el.style.textAlign = alignValue;
+                el.classList.remove(className);
+            });
+        });
+    }
+
+    /**
+     * Convert ql-font-* classes to font-family styles
+     */
+    convertFontClasses(container) {
+        const fontMap = {
+            'ql-font-serif': 'Georgia, Times New Roman, serif',
+            'ql-font-monospace': 'Monaco, Courier New, monospace'
+            // sans-serif is default
+        };
+
+        Object.entries(fontMap).forEach(([className, fontValue]) => {
+            const elements = container.querySelectorAll(`.${className}`);
+            elements.forEach(el => {
+                el.style.fontFamily = fontValue;
+                el.classList.remove(className);
+            });
+        });
+    }
+
+    /**
+     * Convert ql-size-* classes to font-size styles
+     */
+    convertSizeClasses(container) {
+        const sizeMap = {
+            'ql-size-small': '0.75em',
+            'ql-size-large': '1.5em',
+            'ql-size-huge': '2.5em'
+            // 'normal' is default (false in Quill config)
+        };
+
+        Object.entries(sizeMap).forEach(([className, sizeValue]) => {
+            const elements = container.querySelectorAll(`.${className}`);
+            elements.forEach(el => {
+                el.style.fontSize = sizeValue;
+                el.classList.remove(className);
+            });
+        });
+    }
+
+    /**
+     * Convert ql-direction-rtl class to dir attribute
+     */
+    convertDirectionClasses(container) {
+        const rtlElements = container.querySelectorAll('.ql-direction-rtl');
+        rtlElements.forEach(el => {
+            el.setAttribute('dir', 'rtl');
+            el.classList.remove('ql-direction-rtl');
+        });
+    }
+
+    /**
+     * Convert ql-syntax code blocks to inline styled pre elements
+     */
+    convertCodeBlocks(container) {
+        const codeBlocks = container.querySelectorAll('pre.ql-syntax');
+        codeBlocks.forEach(el => {
+            el.style.backgroundColor = '#23241f';
+            el.style.color = '#f8f8f2';
+            el.style.padding = '12px';
+            el.style.borderRadius = '4px';
+            el.style.fontFamily = 'Monaco, Consolas, "Courier New", monospace';
+            el.style.fontSize = '13px';
+            el.style.overflow = 'auto';
+            el.style.whiteSpace = 'pre';
+            el.classList.remove('ql-syntax');
+        });
+    }
+
+    convertIndentedLists(container) {
+        // Process both ul and ol lists
+        const lists = container.querySelectorAll('ul, ol');
+
+        lists.forEach(list => {
+            const items = Array.from(list.children).filter(el => el.tagName === 'LI');
+            if (items.length === 0) return;
+
+            // Build nested structure
+            let currentLevel = 0;
+            let currentParent = list;
+            const parentStack = [{ element: list, level: 0 }];
+
+            items.forEach(item => {
+                // Get indent level from class (safely handle missing className)
+                const className = item.className || '';
+                const indentMatch = className.match(/ql-indent-(\d+)/);
+                const itemLevel = indentMatch ? parseInt(indentMatch[1], 10) : 0;
+
+                // Remove the indent class if present
+                if (itemLevel > 0) {
+                    item.classList.remove(`ql-indent-${itemLevel}`);
+                }
+                if (item.classList && item.classList.length === 0) {
+                    item.removeAttribute('class');
+                }
+
+                if (itemLevel > currentLevel) {
+                    // Need to nest deeper - create new sublists
+                    for (let i = currentLevel; i < itemLevel; i++) {
+                        const newList = document.createElement(list.tagName.toLowerCase());
+                        const lastItem = currentParent.lastElementChild;
+                        if (lastItem && lastItem.tagName === 'LI') {
+                            lastItem.appendChild(newList);
+                            parentStack.push({ element: newList, level: i + 1 });
+                            currentParent = newList;
+                        }
+                    }
+                } else if (itemLevel < currentLevel) {
+                    // Go back up the tree
+                    while (parentStack.length > 1 && parentStack[parentStack.length - 1].level > itemLevel) {
+                        parentStack.pop();
+                    }
+                    currentParent = parentStack[parentStack.length - 1].element;
+                }
+
+                currentLevel = itemLevel;
+
+                // Move item to current parent if needed
+                if (item.parentElement !== currentParent) {
+                    currentParent.appendChild(item);
+                }
+            });
+        });
+    }
+
+    removeQuillClasses(container) {
+        // Remove ql-* classes from all elements
+        const elements = container.querySelectorAll('[class*="ql-"]');
+        elements.forEach(el => {
+            const classes = Array.from(el.classList);
+            classes.forEach(cls => {
+                if (cls.startsWith('ql-')) {
+                    el.classList.remove(cls);
+                }
+            });
+            if (el.classList.length === 0) {
+                el.removeAttribute('class');
+            }
+        });
+    }
+
     // ==================== PUBLIC API ====================
 
     @api
@@ -229,6 +467,18 @@ export default class EditorQuill extends LightningElement {
         const content = this.quillInstance.root.innerHTML;
         this.fireEvent('content-get', 'api', { contentLength: content.length });
         return content;
+    }
+
+    @api
+    getConvertedContent() {
+        if (!this.quillInstance) return '';
+        const rawContent = this.quillInstance.root.innerHTML;
+        const converted = this.convertToStandardHtml(rawContent);
+        this.fireEvent('content-get-converted', 'api', {
+            rawLength: rawContent.length,
+            convertedLength: converted.length
+        });
+        return converted;
     }
 
     @api

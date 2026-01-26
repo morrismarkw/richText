@@ -2,25 +2,29 @@
     <lightning-card>
         <h2 slot="title">
             <lightning-icon icon-name="custom:custom63" size="small" class="slds-m-right_small"></lightning-icon>
-            Rich Text Editor Evaluation
-            <span class="version-badge">v3.5.0</span>
+            {recordName}
+            <span class="version-badge">v3.24.0</span>
         </h2>
 
         <div slot="actions">
             <lightning-button-group>
-                <lightning-button
-                    label="Save"
-                    variant="brand"
-                    icon-name="utility:save"
-                    onclick={handleSave}
-                    disabled={isSaving}>
-                </lightning-button>
+                <template if:true={isDirty}>
+                    <lightning-button
+                        label="Reload All"
+                        variant="brand"
+                        icon-name="utility:refresh"
+                        onclick={handleReloadAll}>
+                    </lightning-button>
+                </template>
                 <lightning-button
                     label={toggleLogLabel}
                     icon-name={toggleLogIcon}
                     onclick={handleToggleLog}>
                 </lightning-button>
             </lightning-button-group>
+            <template if:true={isDirty}>
+                <span class="dirty-indicator">Modified</span>
+            </template>
         </div>
 
         <div class="main-container">
@@ -60,11 +64,35 @@
                         </div>
                     </lightning-tab>
 
+                    <!-- Quill Blot: Quill with component preservation -->
+                    <lightning-tab label="Quill Blot" value="quillblot">
+                        <div class="tab-content">
+                            <div class="tab-actions">
+                                <lightning-button-group>
+                                    <lightning-button label="Load" icon-name="utility:download" onclick={handleQuillBlotLoad}></lightning-button>
+                                    <lightning-button label="Inject Sample" icon-name="utility:paste" onclick={handleQuillBlotInject}></lightning-button>
+                                    <lightning-button label="Clear" icon-name="utility:clear" onclick={handleQuillBlotClear}></lightning-button>
+                                </lightning-button-group>
+                                <span class="registry-badge" if:true={quillBlotRegistryCount}>
+                                    {quillBlotRegistryCount} component(s)
+                                </span>
+                            </div>
+                            <c-editor-quill-blot
+                                oneditorevent={handleEditorEvent}
+                                oncontentchange={handleQuillBlotContentChange}>
+                            </c-editor-quill-blot>
+                        </div>
+                    </lightning-tab>
+
                     <!-- Preview: Rendered HTML view -->
                     <lightning-tab label="Preview" value="preview">
                         <div class="tab-content">
                             <div class="tab-actions">
                                 <lightning-button-group>
+                                    <lightning-button
+                                        label="Original"
+                                        variant={previewSourceVariant}
+                                        onclick={handlePreviewSelectSource}></lightning-button>
                                     <lightning-button
                                         label="Standard"
                                         variant={previewStandardVariant}
@@ -73,6 +101,10 @@
                                         label="Quill"
                                         variant={previewQuillVariant}
                                         onclick={handlePreviewSelectQuill}></lightning-button>
+                                    <lightning-button
+                                        label="Quill Blot"
+                                        variant={previewQuillBlotVariant}
+                                        onclick={handlePreviewSelectQuillBlot}></lightning-button>
                                 </lightning-button-group>
                                 <lightning-button-group class="slds-m-left_medium">
                                     <lightning-button label="Refresh" icon-name="utility:refresh" onclick={handleRefreshPreview}></lightning-button>
@@ -88,6 +120,10 @@
                             <div class="tab-actions">
                                 <lightning-button-group>
                                     <lightning-button
+                                        label="Original"
+                                        variant={sourceOriginalVariant}
+                                        onclick={handleSourceSelectOriginal}></lightning-button>
+                                    <lightning-button
                                         label="Standard"
                                         variant={sourceStandardVariant}
                                         onclick={handleSourceSelectStandard}></lightning-button>
@@ -95,6 +131,10 @@
                                         label="Quill"
                                         variant={sourceQuillVariant}
                                         onclick={handleSourceSelectQuill}></lightning-button>
+                                    <lightning-button
+                                        label="Quill Blot"
+                                        variant={sourceQuillBlotVariant}
+                                        onclick={handleSourceSelectQuillBlot}></lightning-button>
                                 </lightning-button-group>
                                 <lightning-button-group class="slds-m-left_medium">
                                     <lightning-button label="Copy" icon-name="utility:copy" onclick={handleCopyActiveSource}></lightning-button>
@@ -109,7 +149,7 @@
 
             <template if:true={showEventLog}>
                 <div class="event-log-container">
-                    <c-event-log-panel lwc:ref="eventLog" component-version="v3.5.0"></c-event-log-panel>
+                    <c-event-log-panel lwc:ref="eventLog" component-version="v3.8.0"></c-event-log-panel>
                 </div>
             </template>
         </div>

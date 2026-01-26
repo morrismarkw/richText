@@ -22,26 +22,32 @@ Quill uses an internal Delta format. HTML is parsed, converted to Delta, then re
 
 ## Supported Elements Matrix
 
-| Element | Quill (Edit) | Salesforce (View) | Notes |
-|---------|:------------:|:-----------------:|-------|
-| `<p>` | Yes | Yes | Paragraph |
-| `<h1>` - `<h6>` | Yes | Yes | Headings |
-| `<strong>`, `<b>` | Yes | Yes | Bold |
-| `<em>`, `<i>` | Yes | Yes | Italic |
-| `<u>` | Yes | Yes | Underline |
-| `<s>`, `<strike>` | Yes | Yes | Strikethrough |
-| `<a href="">` | Yes | Yes | Links |
-| `<ul>`, `<ol>`, `<li>` | Yes | Yes | Lists |
-| `<blockquote>` | Yes | Yes | Block quotes |
-| `<pre>`, `<code>` | Yes | Yes | Code blocks |
-| `<img>` | Yes | Yes | Images |
-| `<br>` | Yes | Yes | Line breaks |
-| `<table>` | **No** | Yes | Tables - Quill needs extension |
-| `<div>` | **No** | Yes | Generic containers |
-| `<span style="">` | **No** | Yes | Inline styles |
-| Custom CSS classes | **No** | Yes | Styling classes |
-| `<hr>` | **No** | Yes | Horizontal rules |
-| `<sub>`, `<sup>` | **No** | Yes | Subscript/superscript |
+| Element | Quill (Edit) | Quill Blot (Edit) | Salesforce (View) | Notes |
+|---------|:------------:|:-----------------:|:-----------------:|-------|
+| `<p>` | Yes | Yes | Yes | Paragraph |
+| `<h1>` - `<h6>` | Yes | Yes | Yes | Headings |
+| `<strong>`, `<b>` | Yes | Yes | Yes | Bold |
+| `<em>`, `<i>` | Yes | Yes | Yes | Italic |
+| `<u>` | Yes | Yes | Yes | Underline |
+| `<s>`, `<strike>` | Yes | Yes | Yes | Strikethrough |
+| `<a href="">` | Yes | Yes | Yes | Links |
+| `<ul>`, `<ol>`, `<li>` | Yes | Yes | Yes | Lists |
+| `<blockquote>` | Yes | Yes | Yes | Basic block quotes |
+| `<blockquote style="">` | **No** | **Blot** | Yes | Styled blockquotes → component |
+| `<pre>`, `<code>` | Yes | Yes | Yes | Code blocks |
+| `<img>` | Yes | Yes | Yes | Images |
+| `<br>` | Yes | Yes | Yes | Line breaks |
+| `<table>` | **No** | **Blot** | Yes | Tables → component |
+| `<div style="">` | **No** | **Blot** | Yes | Styled divs → component |
+| `<span style="">` | Partial | Partial | Yes | Colors preserved, others stripped |
+| `<hr>` | **No** | **Blot** | Yes | Plain HR stripped, styled → component |
+| `<sub>`, `<sup>` | **No** | **No** | Yes | Not supported in Quill |
+
+**Legend:**
+- **Yes** = Native support
+- **No** = Stripped/lost
+- **Blot** = Preserved as component placeholder
+- **Partial** = Some styles preserved (color, background)
 
 ---
 
@@ -216,6 +222,12 @@ class ComponentPlaceholder extends BlockEmbed {
     static getIcon(type) {
         const icons = {
             'TABLE': '📊',
+            'STYLED_DIV': '📦',
+            'BLOCKQUOTE': '💬',
+            'HR': '➖',
+            'SIGNATURE': '✍️',
+            'CHOICE_FIELD': '☑️',
+            'ENTRY_FIELD': '📝',
             'CHART': '📈',
             'CODE': '💻',
             'RAW_HTML': '🔧'
@@ -377,7 +389,141 @@ handleBlotEditClick(componentId, componentType) {
 | **Formats** | Text formatting definitions (bold, italic, custom) |
 | **Themes** | Visual themes (Snow = toolbar, Bubble = tooltip) |
 
+### Quill Configuration Options
+
+When creating a Quill instance, you can configure:
+
+```javascript
+const quill = new Quill('#editor', {
+    theme: 'snow',           // 'snow' (toolbar) or 'bubble' (tooltip)
+    placeholder: 'Enter content here...',
+    readOnly: false,         // Disable editing
+    formats: [...],          // Whitelist of allowed formats (omit for all)
+    modules: {
+        toolbar: [...],      // Toolbar configuration
+        history: {...},      // Undo/redo settings
+        keyboard: {...},     // Custom shortcuts
+        clipboard: {...}     // Paste handling
+    }
+});
+```
+
+#### The `formats` Whitelist
+
+**Important**: If you specify a `formats` array, only those formats are allowed. If you omit it entirely, ALL formats are enabled.
+
+```javascript
+// RESTRICTED: Only these formats work
+formats: ['bold', 'italic', 'link']
+
+// UNRESTRICTED: All formats allowed (recommended for full functionality)
+// Simply omit the formats property entirely
+```
+
 ### Modules (Extensible)
+
+#### Toolbar Module - Complete Configuration
+
+The toolbar is configured as an array of arrays, where each inner array is a button group:
+
+```javascript
+const fullToolbarOptions = [
+    // Text style dropdowns
+    [{ font: [] }],                              // Font family dropdown
+    [{ size: ['small', false, 'large', 'huge'] }], // Size dropdown (false = normal)
+    [{ header: [1, 2, 3, 4, 5, 6, false] }],     // Header dropdown
+
+    // Inline formatting buttons
+    ['bold', 'italic', 'underline', 'strike'],   // Basic formatting
+    [{ script: 'sub' }, { script: 'super' }],    // Subscript/superscript
+
+    // Color pickers
+    [{ color: [] }, { background: [] }],         // Text color, highlight
+
+    // Block formats
+    ['blockquote', 'code-block'],                // Quote, code
+
+    // Lists and indentation
+    [{ list: 'ordered' }, { list: 'bullet' }],   // Numbered, bulleted
+    [{ indent: '-1' }, { indent: '+1' }],        // Decrease/increase indent
+
+    // Alignment and direction
+    [{ align: [] }],                             // Left, center, right, justify
+    [{ direction: 'rtl' }],                      // Right-to-left toggle
+
+    // Embeds
+    ['link', 'image', 'video'],                  // Insert link, image, video
+
+    // Utility
+    ['clean']                                    // Remove formatting
+];
+```
+
+#### Toolbar Options Reference
+
+| Option | Type | Values | Description |
+|--------|------|--------|-------------|
+| `font` | dropdown | `[]` = all fonts | Font family selector |
+| `size` | dropdown | `['small', false, 'large', 'huge']` | Font size (false = normal) |
+| `header` | dropdown | `[1, 2, 3, 4, 5, 6, false]` | Heading levels |
+| `bold` | button | - | Bold text |
+| `italic` | button | - | Italic text |
+| `underline` | button | - | Underlined text |
+| `strike` | button | - | Strikethrough text |
+| `script` | button | `'sub'` or `'super'` | Subscript/superscript |
+| `color` | picker | `[]` = default palette | Text color |
+| `background` | picker | `[]` = default palette | Highlight color |
+| `blockquote` | button | - | Block quote |
+| `code-block` | button | - | Code block |
+| `list` | button | `'ordered'` or `'bullet'` | List type |
+| `indent` | button | `'-1'` or `'+1'` | Indent level |
+| `align` | dropdown | `[]` = all alignments | Text alignment |
+| `direction` | button | `'rtl'` | Right-to-left |
+| `link` | button | - | Insert/edit link |
+| `image` | button | - | Insert image |
+| `video` | button | - | Insert video |
+| `clean` | button | - | Remove formatting |
+
+#### Enabling/Disabling Toolbar Features
+
+**To enable a feature**: Include it in the toolbar array
+**To disable a feature**: Simply omit it from the toolbar array
+
+```javascript
+// Minimal toolbar - only basic formatting
+const minimalToolbar = [
+    ['bold', 'italic', 'underline'],
+    ['link']
+];
+
+// No color support - omit color and background
+const noColorToolbar = [
+    ['bold', 'italic'],
+    [{ list: 'ordered' }, { list: 'bullet' }]
+];
+
+// Custom header levels only
+const limitedHeaders = [
+    [{ header: [1, 2, false] }]  // Only H1, H2, and normal
+];
+```
+
+#### Color/Background Style Attributors
+
+**Critical**: To preserve inline color styles when loading content, register the style attributors:
+
+```javascript
+const Quill = window.Quill;
+const ColorStyle = Quill.import('attributors/style/color');
+const BackgroundStyle = Quill.import('attributors/style/background');
+Quill.register(ColorStyle, true);
+Quill.register(BackgroundStyle, true);
+
+// THEN create the Quill instance
+const quill = new Quill('#editor', {...});
+```
+
+Without this registration, colors are stored as classes (`ql-color-red`) which don't display outside Quill. With registration, colors are stored as inline styles (`style="color: red"`).
 
 #### Toolbar Module
 ```javascript
@@ -1098,6 +1244,332 @@ For very large documents, consider:
 
 ---
 
+## Quill Output Conversion Pattern
+
+Quill produces HTML with its own formatting classes (e.g., `ql-indent-1` for nested lists). These render correctly within Quill but **will not display properly** in standard HTML viewers like Salesforce's `lightning-formatted-rich-text`.
+
+### The Problem: Quill's List Output
+
+**What Quill produces:**
+```html
+<ul>
+    <li>First level item</li>
+    <li class="ql-indent-1">Second level item</li>
+    <li class="ql-indent-2">Third level item</li>
+</ul>
+```
+
+**What standard HTML expects:**
+```html
+<ul>
+    <li>First level item
+        <ul>
+            <li>Second level item
+                <ul>
+                    <li>Third level item</li>
+                </ul>
+            </li>
+        </ul>
+    </li>
+</ul>
+```
+
+### Solution: Dual Content APIs
+
+Provide two methods on Quill editor components:
+
+| Method | Returns | Use Case |
+|--------|---------|----------|
+| `getContent()` | Raw Quill HTML | Source tab, debugging, storage |
+| `getConvertedContent()` | Standard HTML | Preview, Salesforce display |
+
+### Implementation
+
+```javascript
+// In editorQuill.js
+
+@api
+getContent() {
+    // Returns raw Quill output - preserves ql-* classes
+    return this.quillInstance.root.innerHTML;
+}
+
+@api
+getConvertedContent() {
+    // Returns standard HTML - converts Quill classes to inline styles
+    const rawContent = this.quillInstance.root.innerHTML;
+    return this.convertToStandardHtml(rawContent);
+}
+
+// Complete conversion logic
+convertToStandardHtml(html) {
+    const temp = document.createElement('div');
+    temp.innerHTML = html;
+
+    // Convert Quill classes to inline styles BEFORE removing them
+    this.convertAlignmentClasses(temp);  // ql-align-* → text-align style
+    this.convertFontClasses(temp);       // ql-font-* → font-family style
+    this.convertSizeClasses(temp);       // ql-size-* → font-size style
+    this.convertDirectionClasses(temp);  // ql-direction-rtl → dir attribute
+
+    // Convert indented lists to nested structure
+    this.convertIndentedLists(temp);     // ql-indent-N → nested <ul>/<ol>
+
+    // Remove remaining Quill-specific classes
+    this.removeQuillClasses(temp);
+
+    return temp.innerHTML;
+}
+
+// Alignment: ql-align-center → style="text-align: center"
+convertAlignmentClasses(container) {
+    const alignmentMap = {
+        'ql-align-center': 'center',
+        'ql-align-right': 'right',
+        'ql-align-justify': 'justify'
+    };
+
+    Object.entries(alignmentMap).forEach(([className, alignValue]) => {
+        container.querySelectorAll(`.${className}`).forEach(el => {
+            el.style.textAlign = alignValue;
+            el.classList.remove(className);
+        });
+    });
+}
+
+// Font: ql-font-serif → style="font-family: Georgia, serif"
+convertFontClasses(container) {
+    const fontMap = {
+        'ql-font-serif': 'Georgia, Times New Roman, serif',
+        'ql-font-monospace': 'Monaco, Courier New, monospace'
+    };
+
+    Object.entries(fontMap).forEach(([className, fontValue]) => {
+        container.querySelectorAll(`.${className}`).forEach(el => {
+            el.style.fontFamily = fontValue;
+            el.classList.remove(className);
+        });
+    });
+}
+
+// Size: ql-size-large → style="font-size: 1.5em"
+convertSizeClasses(container) {
+    const sizeMap = {
+        'ql-size-small': '0.75em',
+        'ql-size-large': '1.5em',
+        'ql-size-huge': '2.5em'
+    };
+
+    Object.entries(sizeMap).forEach(([className, sizeValue]) => {
+        container.querySelectorAll(`.${className}`).forEach(el => {
+            el.style.fontSize = sizeValue;
+            el.classList.remove(className);
+        });
+    });
+}
+
+// Direction: ql-direction-rtl → dir="rtl"
+convertDirectionClasses(container) {
+    container.querySelectorAll('.ql-direction-rtl').forEach(el => {
+        el.setAttribute('dir', 'rtl');
+        el.classList.remove('ql-direction-rtl');
+    });
+}
+
+convertIndentedLists(container) {
+    const lists = container.querySelectorAll('ul, ol');
+
+    lists.forEach(list => {
+        const items = Array.from(list.children).filter(el => el.tagName === 'LI');
+        let currentLevel = 0;
+        let currentParent = list;
+        const parentStack = [{ element: list, level: 0 }];
+
+        items.forEach(item => {
+            // Extract indent level from class (safely handle missing className)
+            const className = item.className || '';
+            const indentMatch = className.match(/ql-indent-(\d+)/);
+            const itemLevel = indentMatch ? parseInt(indentMatch[1], 10) : 0;
+
+            // Remove the indent class
+            if (itemLevel > 0) {
+                item.classList.remove(`ql-indent-${itemLevel}`);
+            }
+
+            if (itemLevel > currentLevel) {
+                // Nest deeper - create sublists
+                for (let i = currentLevel; i < itemLevel; i++) {
+                    const newList = document.createElement(list.tagName.toLowerCase());
+                    const lastItem = currentParent.lastElementChild;
+                    if (lastItem && lastItem.tagName === 'LI') {
+                        lastItem.appendChild(newList);
+                        parentStack.push({ element: newList, level: i + 1 });
+                        currentParent = newList;
+                    }
+                }
+            } else if (itemLevel < currentLevel) {
+                // Go back up
+                while (parentStack.length > 1 &&
+                       parentStack[parentStack.length - 1].level > itemLevel) {
+                    parentStack.pop();
+                }
+                currentParent = parentStack[parentStack.length - 1].element;
+            }
+
+            currentLevel = itemLevel;
+            if (item.parentElement !== currentParent) {
+                currentParent.appendChild(item);
+            }
+        });
+    });
+}
+
+removeQuillClasses(container) {
+    const elements = container.querySelectorAll('[class*="ql-"]');
+    elements.forEach(el => {
+        const classes = Array.from(el.classList);
+        classes.forEach(cls => {
+            if (cls.startsWith('ql-')) {
+                el.classList.remove(cls);
+            }
+        });
+        if (el.classList.length === 0) {
+            el.removeAttribute('class');
+        }
+    });
+}
+```
+
+### Quill Class to Style Conversion Reference
+
+| Quill Class | Converted To | Example Output |
+|-------------|--------------|----------------|
+| `ql-align-center` | `style="text-align: center"` | `<p style="text-align: center">` |
+| `ql-align-right` | `style="text-align: right"` | `<p style="text-align: right">` |
+| `ql-align-justify` | `style="text-align: justify"` | `<p style="text-align: justify">` |
+| `ql-font-serif` | `style="font-family: Georgia, Times New Roman, serif"` | `<span style="font-family: ...">` |
+| `ql-font-monospace` | `style="font-family: Monaco, Courier New, monospace"` | `<span style="font-family: ...">` |
+| `ql-size-small` | `style="font-size: 0.75em"` | `<span style="font-size: 0.75em">` |
+| `ql-size-large` | `style="font-size: 1.5em"` | `<span style="font-size: 1.5em">` |
+| `ql-size-huge` | `style="font-size: 2.5em"` | `<span style="font-size: 2.5em">` |
+| `ql-direction-rtl` | `dir="rtl"` attribute | `<p dir="rtl">` |
+| `ql-indent-1` | Nested `<ul>` or `<ol>` | `<li><ul><li>nested</li></ul></li>` |
+| `ql-indent-2` | Double nested list | Two levels of nesting |
+| `ql-syntax` (on `<pre>`) | Inline dark theme styles | `<pre style="background-color: #23241f; color: #f8f8f2; ...">` |
+| `style="color: ..."` | Preserved (via attributor) | No conversion needed |
+| `style="background: ..."` | Preserved (via attributor) | No conversion needed |
+
+### Content Change Event Pattern
+
+When dispatching content change events, include both versions:
+
+```javascript
+quill.on('text-change', (delta, oldDelta, source) => {
+    const rawHtml = quill.root.innerHTML;
+
+    this.dispatchEvent(new CustomEvent('contentchange', {
+        detail: {
+            editor: 'Quill',
+            content: rawHtml,                           // Raw for Source tab
+            convertedContent: this.convertToStandardHtml(rawHtml)  // For Preview tab
+        }
+    }));
+});
+```
+
+### Parent Component Tracking
+
+Track both versions in the parent component:
+
+```javascript
+// Tracked properties
+@track quillSourceContent = '';    // Raw - for Source tab
+@track quillPreviewContent = '';   // Converted - for Preview tab
+
+// Content change handler
+handleQuillContentChange(event) {
+    const { content, convertedContent } = event.detail;
+    this.quillSourceContent = content;
+    this.quillPreviewContent = convertedContent || content;
+}
+
+// Refresh handlers use appropriate method
+handleRefreshSource() {
+    this.quillSourceContent = editor.getContent();        // Raw
+}
+
+handleRefreshPreview() {
+    this.quillPreviewContent = editor.getConvertedContent();  // Converted
+}
+```
+
+### Data Flow Summary
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Content Data Flow                         │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  Database (Standard HTML)                                    │
+│       │                                                      │
+│       ▼                                                      │
+│  ┌─────────────┐                                            │
+│  │ Load into   │                                            │
+│  │ Quill       │                                            │
+│  └──────┬──────┘                                            │
+│         │                                                    │
+│         ▼                                                    │
+│  ┌─────────────┐     User edits in Quill                    │
+│  │   Quill     │     (internal format with ql-* classes)    │
+│  │   Editor    │                                            │
+│  └──────┬──────┘                                            │
+│         │                                                    │
+│    ┌────┴────┐                                              │
+│    │         │                                              │
+│    ▼         ▼                                              │
+│ getContent() getConvertedContent()                          │
+│    │              │                                         │
+│    ▼              ▼                                         │
+│ ┌──────────┐  ┌───────────────────┐                        │
+│ │ Source   │  │ Preview Tab       │                        │
+│ │ Tab      │  │ (lightning-       │                        │
+│ │ (raw)    │  │  formatted-rich-  │                        │
+│ │          │  │  text)            │                        │
+│ └──────────┘  └───────────────────┘                        │
+│                                                              │
+│ For storage: use getConvertedContent() for portable HTML    │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Quill Blot Extension
+
+For `editorQuillBlot`, the conversion happens **after** blot restoration:
+
+```javascript
+@api
+getContent() {
+    // 1. Get raw Quill HTML
+    // 2. Restore blot placeholders to original HTML
+    let html = this.quillInstance.root.innerHTML;
+    html = this.restoreComponents(html);  // Blots → original HTML
+    return html;
+}
+
+@api
+getConvertedContent() {
+    // 1. Get raw Quill HTML
+    // 2. Restore blots
+    // 3. Convert Quill classes to standard HTML
+    let html = this.quillInstance.root.innerHTML;
+    html = this.restoreComponents(html);
+    html = this.convertToStandardHtml(html);
+    return html;
+}
+```
+
+---
+
 ## Key Constraints for AI Agents
 
 1. **Never assume Quill can render arbitrary HTML** - Always validate against the supported elements list
@@ -1114,6 +1586,68 @@ For very large documents, consider:
 
 ---
 
+---
+
+## Component Types Reference
+
+The Quill Blot editor supports these component types for preserving complex elements:
+
+| Type | Icon | Description | Default Display |
+|------|------|-------------|-----------------|
+| `TABLE` | 📊 | HTML tables with any structure | badge |
+| `STYLED_DIV` | 📦 | Divs with flex, background, border-radius | badge |
+| `BLOCKQUOTE` | 💬 | Blockquotes with custom styling | badge |
+| `HR` | ➖ | Horizontal rules with styling | render |
+| `SIGNATURE` | ✍️ | Signature blocks for document signing | preview |
+| `CHOICE_FIELD` | ☑️ | Dropdowns, radio buttons, checkboxes | preview |
+| `ENTRY_FIELD` | 📝 | Text input fields | preview |
+| `CHART` | 📈 | Chart containers | badge |
+| `CODE` | 💻 | Complex code blocks | badge |
+| `RAW_HTML` | 🔧 | Other preserved HTML | badge |
+
+### Display Modes
+
+Components can be displayed in three modes:
+
+- **badge** - Icon + type label (default for most)
+- **render** - Actual HTML rendered inline (good for simple elements)
+- **preview** - Custom preview HTML (good for form fields)
+
+### Component API
+
+```javascript
+// Insert a custom component
+const componentId = editor.insertComponent({
+    type: 'SIGNATURE',
+    html: '<div class="sig-block">...</div>',
+    preview: '<div>✍️ Signature Line</div>',
+    displayMode: 'preview'
+});
+
+// Update component display
+editor.updateComponentDisplay(componentId, 'render');
+
+// Set default display mode for all components
+editor.setDefaultDisplayMode('render');
+```
+
+---
+
+## Document Converter Specification
+
+For detailed specifications on converting PDF, DOC, and DOCX documents to Quill-compatible HTML, see:
+
+**[CONVERTER_SPECIFICATION.md](./CONVERTER_SPECIFICATION.md)**
+
+This specification covers:
+- Quill-native HTML elements
+- Component extraction patterns
+- Placeholder format
+- Display mode configuration
+- Conversion examples
+
+---
+
 ## Version History
 
 | Version | Date | Changes |
@@ -1122,4 +1656,7 @@ For very large documents, consider:
 | 1.1 | 2025-01-25 | Added Custom Blot pattern, Component Editor Dialog, Quill features reference |
 | 1.2 | 2025-01-25 | Added Paste Interception patterns, Salesforce platform considerations (Locker Service, LWS, static resources) |
 | 1.3 | 2025-01-25 | Expanded Document Conversion: DOCX (mammoth.js), DOC, PDF, LLM-based conversion with system prompts |
+| 1.4 | 2025-01-25 | Added Quill Output Conversion Pattern: dual API (getContent/getConvertedContent), ql-indent to nested lists, data flow diagram |
+| 1.5 | 2025-01-25 | Added Quill Configuration Options: full toolbar reference, formats whitelist, color attributor registration, enable/disable features. Complete HTML converter: alignment, font, size, direction class conversions |
+| 1.6 | 2025-01-26 | Added Component Types Reference (TABLE, STYLED_DIV, BLOCKQUOTE, HR, SIGNATURE, CHOICE_FIELD, ENTRY_FIELD). Added display modes (badge, render, preview). Added Component API documentation. Created separate CONVERTER_SPECIFICATION.md for document conversion |
 

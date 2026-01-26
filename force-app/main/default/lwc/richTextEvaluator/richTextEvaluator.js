@@ -1,12 +1,10 @@
 import { LightningElement, api, track, wire } from 'lwc';
-import { getRecord, updateRecord } from 'lightning/uiRecordApi';
+import { getRecord } from 'lightning/uiRecordApi';
 import { ShowToastEvent } from 'lightning/platformShowToastEvent';
 import { loadScript, loadStyle } from 'lightning/platformResourceLoader';
 import QUILL from '@salesforce/resourceUrl/quilljs';
-import Id from '@salesforce/schema/Rich_Text_Document__c.Id';
+import NAME_FIELD from '@salesforce/schema/Rich_Text_Document__c.Name';
 import CONTENT_FIELD from '@salesforce/schema/Rich_Text_Document__c.Content__c';
-import EDITOR_TYPE_FIELD from '@salesforce/schema/Rich_Text_Document__c.Editor_Type__c';
-import LAST_EVENT_FIELD from '@salesforce/schema/Rich_Text_Document__c.Last_Editor_Event__c';
 
 const SAMPLE_CONTENT = `
 <h2>Sample Rich Text Content</h2>
@@ -33,6 +31,7 @@ const SAMPLE_CONTENT = `
 const EDITOR_MAP = {
     standard: 'Standard',
     quill: 'Quill',
+    quillblot: 'QuillBlot',
     preview: 'Preview',
     source: 'Source'
 };
@@ -42,19 +41,22 @@ export default class RichTextEvaluator extends LightningElement {
 
     @track activeTab = 'standard';
     @track showEventLog = true;
-    @track isSaving = false;
+    @track isDirty = false;
     @track showToast = false;
     @track toastMessage = '';
     @track toastVariant = 'success';
     @track sourceViewEditor = 'quill'; // Which editor's source to show in Source tab
-    @track previewViewEditor = 'quill'; // Which editor's content to show in Preview tab
+    @track previewViewEditor = 'source'; // Which editor's content to show in Preview tab (default to original source)
 
-    // Preview content for each editor
-    @track standardPreviewContent = '';
-    @track quillPreviewContent = '';
+    // Content for each editor (raw = source tab, converted = preview tab)
+    @track standardContent = '';  // Standard doesn't need conversion
+    @track quillSourceContent = '';  // Raw Quill output for Source tab
+    @track quillPreviewContent = '';  // Converted for Preview tab
+    @track quillBlotSourceContent = '';  // Raw with blots restored for Source tab
+    @track quillBlotPreviewContent = '';  // Converted for Preview tab
 
+    _recordName = '';
     _recordContent = '';
-    _recordEditorType = '';
     _contentPushedToEditors = false;
     _hasRendered = false;
     _quillScriptsLoaded = false;
@@ -100,14 +102,23 @@ export default class RichTextEvaluator extends LightningElement {
         const standard = this.template.querySelector('c-editor-standard');
         if (standard) {
             standard.setContent(this._recordContent);
-            this.standardPreviewContent = this._recordContent;
+            this.standardContent = this._recordContent;
         }
 
         // Push to Quill component
         const quill = this.template.querySelector('c-editor-quill');
         if (quill) {
             quill.setContent(this._recordContent);
+            this.quillSourceContent = this._recordContent;
             this.quillPreviewContent = this._recordContent;
+        }
+
+        // Push to Quill Blot component
+        const quillBlot = this.template.querySelector('c-editor-quill-blot');
+        if (quillBlot) {
+            quillBlot.setContent(this._recordContent);
+            this.quillBlotSourceContent = this._recordContent;
+            this.quillBlotPreviewContent = this._recordContent;
         }
 
         this._contentPushedToEditors = true;
@@ -118,21 +129,23 @@ export default class RichTextEvaluator extends LightningElement {
 
     @wire(getRecord, {
         recordId: '$recordId',
-        fields: [CONTENT_FIELD, EDITOR_TYPE_FIELD, LAST_EVENT_FIELD]
+        fields: [NAME_FIELD, CONTENT_FIELD]
     })
     wiredRecord({ error, data }) {
         if (data) {
+            this._recordName = data.fields.Name?.value || '';
             this._recordContent = data.fields.Content__c?.value || '';
-            this._recordEditorType = data.fields.Editor_Type__c?.value || 'Standard';
 
-            // Initialize previews with record content
-            this.standardPreviewContent = this._recordContent;
+            // Initialize content with record content
+            this.standardContent = this._recordContent;
+            this.quillSourceContent = this._recordContent;
             this.quillPreviewContent = this._recordContent;
+            this.quillBlotSourceContent = this._recordContent;
+            this.quillBlotPreviewContent = this._recordContent;
 
             this.logInternalEvent('record-loaded', 'lifecycle', {
                 recordId: this.recordId,
-                contentLength: this._recordContent.length,
-                editorType: this._recordEditorType
+                contentLength: this._recordContent.length
             });
 
             if (this._hasRendered && !this._contentPushedToEditors) {
@@ -154,6 +167,10 @@ export default class RichTextEvaluator extends LightningElement {
         return this.showEventLog ? 'editor-container with-log' : 'editor-container full-width';
     }
 
+    get recordName() {
+        return this._recordName || 'Rich Text Document';
+    }
+
     get toggleLogLabel() {
         return this.showEventLog ? 'Hide Log' : 'Show Log';
     }
@@ -171,11 +188,15 @@ export default class RichTextEvaluator extends LightningElement {
     }
 
     get formattedStandardSource() {
-        return this.formatHtml(this.standardPreviewContent);
+        return this.formatHtml(this.standardContent);
     }
 
     get formattedQuillSource() {
-        return this.formatHtml(this.quillPreviewContent);
+        return this.formatHtml(this.quillSourceContent);
+    }
+
+    get sourceOriginalVariant() {
+        return this.sourceViewEditor === 'original' ? 'brand' : 'neutral';
     }
 
     get sourceStandardVariant() {
@@ -186,17 +207,37 @@ export default class RichTextEvaluator extends LightningElement {
         return this.sourceViewEditor === 'quill' ? 'brand' : 'neutral';
     }
 
+    get sourceQuillBlotVariant() {
+        return this.sourceViewEditor === 'quillblot' ? 'brand' : 'neutral';
+    }
+
     get formattedActiveSource() {
-        const content = this.sourceViewEditor === 'standard'
-            ? this.standardPreviewContent
-            : this.quillPreviewContent;
+        let content;
+        if (this.sourceViewEditor === 'original') {
+            content = this._recordContent;
+        } else if (this.sourceViewEditor === 'standard') {
+            content = this.standardContent;
+        } else if (this.sourceViewEditor === 'quillblot') {
+            content = this.quillBlotSourceContent;
+        } else {
+            content = this.quillSourceContent;
+        }
         return this.formatHtml(content);
     }
 
     get activeSourceContent() {
-        return this.sourceViewEditor === 'standard'
-            ? this.standardPreviewContent
-            : this.quillPreviewContent;
+        if (this.sourceViewEditor === 'original') {
+            return this._recordContent;
+        } else if (this.sourceViewEditor === 'standard') {
+            return this.standardContent;
+        } else if (this.sourceViewEditor === 'quillblot') {
+            return this.quillBlotSourceContent;
+        }
+        return this.quillSourceContent;
+    }
+
+    get previewSourceVariant() {
+        return this.previewViewEditor === 'source' ? 'brand' : 'neutral';
     }
 
     get previewStandardVariant() {
@@ -207,10 +248,24 @@ export default class RichTextEvaluator extends LightningElement {
         return this.previewViewEditor === 'quill' ? 'brand' : 'neutral';
     }
 
+    get previewQuillBlotVariant() {
+        return this.previewViewEditor === 'quillblot' ? 'brand' : 'neutral';
+    }
+
+    get quillBlotRegistryCount() {
+        const editor = this.template.querySelector('c-editor-quill-blot');
+        return editor ? editor.getRegistryCount() : 0;
+    }
+
     get activePreviewContent() {
-        return this.previewViewEditor === 'standard'
-            ? this.standardPreviewContent
-            : this.quillPreviewContent;
+        if (this.previewViewEditor === 'source') {
+            return this._recordContent;  // Original from database - never changes
+        } else if (this.previewViewEditor === 'standard') {
+            return this.standardContent;
+        } else if (this.previewViewEditor === 'quillblot') {
+            return this.quillBlotPreviewContent;
+        }
+        return this.quillPreviewContent;
     }
 
     // ==================== EVENT HANDLERS ====================
@@ -243,7 +298,8 @@ export default class RichTextEvaluator extends LightningElement {
     pushContentToEditor(editorName) {
         const editorMap = {
             'Standard': 'c-editor-standard',
-            'Quill': 'c-editor-quill'
+            'Quill': 'c-editor-quill',
+            'QuillBlot': 'c-editor-quill-blot'
         };
 
         const selector = editorMap[editorName];
@@ -253,11 +309,15 @@ export default class RichTextEvaluator extends LightningElement {
         if (editor && typeof editor.setContent === 'function') {
             editor.setContent(this._recordContent);
 
-            // Update preview
+            // Update content
             if (editorName === 'Standard') {
-                this.standardPreviewContent = this._recordContent;
+                this.standardContent = this._recordContent;
             } else if (editorName === 'Quill') {
+                this.quillSourceContent = this._recordContent;
                 this.quillPreviewContent = this._recordContent;
+            } else if (editorName === 'QuillBlot') {
+                this.quillBlotSourceContent = this._recordContent;
+                this.quillBlotPreviewContent = this._recordContent;
             }
 
             this.logInternalEvent('content-pushed', 'api', {
@@ -271,65 +331,67 @@ export default class RichTextEvaluator extends LightningElement {
     // Separate content change handlers for each editor
     handleStandardContentChange(event) {
         const { content } = event.detail;
-        this._recordContent = content;
-        this.standardPreviewContent = content;
-        this.logInternalEvent('preview-updated', 'content', { editor: 'Standard', contentLength: content.length });
+        this.standardContent = content;
+        this.isDirty = true;
+        this.logInternalEvent('content-updated', 'content', { editor: 'Standard', contentLength: content.length });
     }
 
     handleQuillContentChange(event) {
-        const { content } = event.detail;
-        this._recordContent = content;
-        this.quillPreviewContent = content;
-        this.logInternalEvent('preview-updated', 'content', { editor: 'Quill', contentLength: content.length });
+        const { content, convertedContent } = event.detail;
+        this.quillSourceContent = content;  // Raw for Source tab
+        this.quillPreviewContent = convertedContent || content;  // Converted for Preview tab
+        this.isDirty = true;
+        this.logInternalEvent('content-updated', 'content', {
+            editor: 'Quill',
+            rawLength: content.length,
+            convertedLength: (convertedContent || content).length
+        });
     }
 
-    async handleSave() {
-        if (!this.recordId) {
-            this.showToastMessage('No record to save to', 'error');
+    handleQuillBlotContentChange(event) {
+        const { content, convertedContent, registry } = event.detail;
+        this.quillBlotSourceContent = content;  // Raw with blots restored for Source tab
+        this.quillBlotPreviewContent = convertedContent || content;  // Converted for Preview tab
+        this.isDirty = true;
+        this.logInternalEvent('content-updated', 'content', {
+            editor: 'QuillBlot',
+            rawLength: content.length,
+            convertedLength: (convertedContent || content).length,
+            registeredComponents: Object.keys(registry || {}).length
+        });
+    }
+
+    handleReloadAll() {
+        if (!this._recordContent) {
+            this.showToastMessage('No saved content to reload', 'error');
             return;
         }
 
-        this.isSaving = true;
+        // Reload all editors from original record content
+        const standard = this.template.querySelector('c-editor-standard');
+        const quill = this.template.querySelector('c-editor-quill');
+        const quillBlot = this.template.querySelector('c-editor-quill-blot');
 
-        try {
-            let content = '';
-
-            // Get content from active editor
-            switch (this.activeTab) {
-                case 'standard':
-                    content = this.template.querySelector('c-editor-standard')?.getContent() || '';
-                    break;
-                case 'quill':
-                    content = this.template.querySelector('c-editor-quill')?.getContent() || '';
-                    break;
-            }
-
-            const editorType = EDITOR_MAP[this.activeTab];
-
-            const fields = {
-                [Id.fieldApiName]: this.recordId,
-                [CONTENT_FIELD.fieldApiName]: content,
-                [EDITOR_TYPE_FIELD.fieldApiName]: editorType,
-                [LAST_EVENT_FIELD.fieldApiName]: `Saved at ${new Date().toISOString()}`
-            };
-
-            await updateRecord({ fields });
-
-            this.logInternalEvent('record-saved', 'api', {
-                recordId: this.recordId,
-                contentLength: content.length,
-                editorType
-            });
-
-            this.showToastMessage('Document saved successfully', 'success');
-        } catch (error) {
-            this.logInternalEvent('save-error', 'api', {
-                error: error.body?.message || error.message
-            });
-            this.showToastMessage('Error saving: ' + (error.body?.message || error.message), 'error');
-        } finally {
-            this.isSaving = false;
+        if (standard) {
+            standard.setContent(this._recordContent);
+            this.standardContent = this._recordContent;
         }
+        if (quill && quill.getIsLoaded()) {
+            quill.setContent(this._recordContent);
+            this.quillSourceContent = this._recordContent;
+            this.quillPreviewContent = this._recordContent;
+        }
+        if (quillBlot && quillBlot.getIsLoaded()) {
+            quillBlot.setContent(this._recordContent);
+            this.quillBlotSourceContent = this._recordContent;
+            this.quillBlotPreviewContent = this._recordContent;
+        }
+
+        this.isDirty = false;
+        this.logInternalEvent('content-reloaded-all', 'api', {
+            contentLength: this._recordContent.length
+        });
+        this.showToastMessage('All editors reloaded from saved content', 'success');
     }
 
     handleToggleLog() {
@@ -343,7 +405,7 @@ export default class RichTextEvaluator extends LightningElement {
         const editor = this.template.querySelector('c-editor-standard');
         if (editor && this._recordContent) {
             editor.setContent(this._recordContent);
-            this.standardPreviewContent = this._recordContent;
+            this.standardContent = this._recordContent;
             this.logInternalEvent('content-loaded', 'api', { editor: 'Standard', contentLength: this._recordContent.length });
             this.showToastMessage('Content loaded', 'success');
         } else if (!this._recordContent) {
@@ -363,7 +425,7 @@ export default class RichTextEvaluator extends LightningElement {
         const editor = this.template.querySelector('c-editor-standard');
         if (editor) {
             editor.setContent('');
-            this.standardPreviewContent = '';
+            this.standardContent = '';
             this.logInternalEvent('content-cleared', 'api', { editor: 'Standard' });
         }
     }
@@ -381,6 +443,7 @@ export default class RichTextEvaluator extends LightningElement {
         const editor = this.template.querySelector('c-editor-quill');
         if (editor && this._recordContent) {
             editor.setContent(this._recordContent);
+            this.quillSourceContent = this._recordContent;
             this.quillPreviewContent = this._recordContent;
             this.logInternalEvent('content-loaded', 'api', { editor: 'Quill', contentLength: this._recordContent.length });
             this.showToastMessage('Content loaded', 'success');
@@ -405,6 +468,7 @@ export default class RichTextEvaluator extends LightningElement {
         const editor = this.template.querySelector('c-editor-quill');
         if (editor && editor.getIsLoaded()) {
             editor.setContent('');
+            this.quillSourceContent = '';
             this.quillPreviewContent = '';
             this.logInternalEvent('content-cleared', 'api', { editor: 'Quill' });
         } else {
@@ -421,7 +485,54 @@ export default class RichTextEvaluator extends LightningElement {
         }
     }
 
+    // ==================== QUILL BLOT TAB ACTIONS ====================
+
+    handleQuillBlotLoad() {
+        const editor = this.template.querySelector('c-editor-quill-blot');
+        if (editor && this._recordContent) {
+            editor.setContent(this._recordContent);
+            this.quillBlotSourceContent = this._recordContent;
+            this.quillBlotPreviewContent = this._recordContent;
+            this.logInternalEvent('content-loaded', 'api', {
+                editor: 'QuillBlot',
+                contentLength: this._recordContent.length
+            });
+            this.showToastMessage('Content loaded', 'success');
+        } else if (!this._recordContent) {
+            this.showToastMessage('No saved content to load', 'error');
+        } else {
+            this.showToastMessage('Quill Blot editor is still loading...', 'error');
+        }
+    }
+
+    handleQuillBlotInject() {
+        const editor = this.template.querySelector('c-editor-quill-blot');
+        if (editor && editor.getIsLoaded()) {
+            editor.insertContent(SAMPLE_CONTENT, 'end');
+            this.logInternalEvent('sample-injected', 'api', { editor: 'QuillBlot' });
+        } else {
+            this.showToastMessage('Quill Blot editor is still loading...', 'error');
+        }
+    }
+
+    handleQuillBlotClear() {
+        const editor = this.template.querySelector('c-editor-quill-blot');
+        if (editor && editor.getIsLoaded()) {
+            editor.setContent('');
+            this.quillBlotSourceContent = '';
+            this.quillBlotPreviewContent = '';
+            this.logInternalEvent('content-cleared', 'api', { editor: 'QuillBlot' });
+        } else {
+            this.showToastMessage('Quill Blot editor is still loading...', 'error');
+        }
+    }
+
     // ==================== PREVIEW TAB ACTIONS ====================
+
+    handlePreviewSelectSource() {
+        this.previewViewEditor = 'source';
+        this.logInternalEvent('preview-view-changed', 'interaction', { editor: 'Source (Original)' });
+    }
 
     handlePreviewSelectStandard() {
         this.previewViewEditor = 'standard';
@@ -433,15 +544,26 @@ export default class RichTextEvaluator extends LightningElement {
         this.logInternalEvent('preview-view-changed', 'interaction', { editor: 'Quill' });
     }
 
+    handlePreviewSelectQuillBlot() {
+        this.previewViewEditor = 'quillblot';
+        this.logInternalEvent('preview-view-changed', 'interaction', { editor: 'QuillBlot' });
+    }
+
     handleRefreshPreview() {
         const standardEditor = this.template.querySelector('c-editor-standard');
         const quillEditor = this.template.querySelector('c-editor-quill');
+        const quillBlotEditor = this.template.querySelector('c-editor-quill-blot');
 
+        // Preview uses converted content for proper rendering
+        // Trim to prevent whitespace accumulation
         if (standardEditor) {
-            this.standardPreviewContent = standardEditor.getContent();
+            this.standardContent = (standardEditor.getContent() || '').trim();
         }
         if (quillEditor && quillEditor.getIsLoaded()) {
-            this.quillPreviewContent = quillEditor.getContent();
+            this.quillPreviewContent = (quillEditor.getConvertedContent() || '').trim();
+        }
+        if (quillBlotEditor && quillBlotEditor.getIsLoaded()) {
+            this.quillBlotPreviewContent = (quillBlotEditor.getConvertedContent() || '').trim();
         }
 
         this.logInternalEvent('preview-refreshed', 'api', {
@@ -451,6 +573,11 @@ export default class RichTextEvaluator extends LightningElement {
     }
 
     // ==================== SOURCE TAB ACTIONS ====================
+
+    handleSourceSelectOriginal() {
+        this.sourceViewEditor = 'original';
+        this.logInternalEvent('source-view-changed', 'interaction', { editor: 'Original' });
+    }
 
     handleSourceSelectStandard() {
         this.sourceViewEditor = 'standard';
@@ -462,27 +589,39 @@ export default class RichTextEvaluator extends LightningElement {
         this.logInternalEvent('source-view-changed', 'interaction', { editor: 'Quill' });
     }
 
+    handleSourceSelectQuillBlot() {
+        this.sourceViewEditor = 'quillblot';
+        this.logInternalEvent('source-view-changed', 'interaction', { editor: 'QuillBlot' });
+    }
+
     handleCopyActiveSource() {
         const content = this.activeSourceContent;
-        const editorName = this.sourceViewEditor === 'standard' ? 'Standard' : 'Quill';
+        const editorNames = { standard: 'Standard', quill: 'Quill', quillblot: 'Quill Blot' };
+        const editorName = editorNames[this.sourceViewEditor] || 'Unknown';
         this.copyToClipboard(content, `${editorName} Source`);
     }
 
     handleRefreshSource() {
-        // Refresh source from both editors
+        // Refresh source from all editors (raw content)
+        // Trim to prevent whitespace accumulation
         const standardEditor = this.template.querySelector('c-editor-standard');
         const quillEditor = this.template.querySelector('c-editor-quill');
+        const quillBlotEditor = this.template.querySelector('c-editor-quill-blot');
 
         if (standardEditor) {
-            this.standardPreviewContent = standardEditor.getContent();
+            this.standardContent = (standardEditor.getContent() || '').trim();
         }
         if (quillEditor && quillEditor.getIsLoaded()) {
-            this.quillPreviewContent = quillEditor.getContent();
+            this.quillSourceContent = (quillEditor.getContent() || '').trim();
+        }
+        if (quillBlotEditor && quillBlotEditor.getIsLoaded()) {
+            this.quillBlotSourceContent = (quillBlotEditor.getContent() || '').trim();
         }
 
         this.logInternalEvent('source-refreshed', 'api', {
-            standardLength: this.standardPreviewContent?.length || 0,
-            quillLength: this.quillPreviewContent?.length || 0
+            standardLength: this.standardContent?.length || 0,
+            quillLength: this.quillSourceContent?.length || 0,
+            quillBlotLength: this.quillBlotSourceContent?.length || 0
         });
         this.showToastMessage('Source refreshed', 'success');
     }

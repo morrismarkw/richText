@@ -9,13 +9,6 @@ const CATEGORIES = {
     debug: { label: 'Debug', color: '#333333' }
 };
 
-const EDITOR_COLORS = {
-    Standard: '#1589ee',
-    Quill: '#0066cc',
-    TinyMCE: '#5271ff',
-    CKEditor: '#0066ff'
-};
-
 export default class EventLogPanel extends LightningElement {
     @api componentVersion = 'unknown';
 
