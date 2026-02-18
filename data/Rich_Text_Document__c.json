@@ -1,0 +1,58 @@
+{
+  "records": [
+    {
+      "attributes": {
+        "type": "Rich_Text_Document__c",
+        "referenceId": "BasicFormattingTest"
+      },
+      "Name": "Basic Formatting Test",
+      "Content__c": "<h1>Heading Level 1</h1><h2>Heading Level 2</h2><h3>Heading Level 3</h3><p>This is a paragraph with <strong>bold text</strong>, <em>italic text</em>, <u>underlined text</u>, and <s>strikethrough text</s>.</p><p>Here is <strong><em>bold italic</em></strong> combined, and <span style=\"color: red;\">colored text</span> with <span style=\"background-color: yellow;\">highlighted background</span>.</p><p>Superscript: x<sup>2</sup> and subscript: H<sub>2</sub>O</p>",
+      "Editor_Type__c": "Standard"
+    },
+    {
+      "attributes": {
+        "type": "Rich_Text_Document__c",
+        "referenceId": "TablesAndListsTest"
+      },
+      "Name": "Tables and Lists Test",
+      "Content__c": "<h2>Complex Table</h2><table border=\"1\" style=\"border-collapse: collapse; width: 100%;\"><thead><tr style=\"background-color: #4a90d9; color: white;\"><th>Product</th><th>Q1</th><th>Q2</th><th>Q3</th><th>Q4</th></tr></thead><tbody><tr><td>Widget A</td><td style=\"text-align: right;\">$10,000</td><td style=\"text-align: right;\">$12,500</td><td style=\"text-align: right;\">$15,000</td><td style=\"text-align: right; background-color: #90EE90;\">$18,000</td></tr><tr style=\"background-color: #f0f0f0;\"><td>Widget B</td><td style=\"text-align: right;\">$8,000</td><td style=\"text-align: right;\">$7,500</td><td style=\"text-align: right; background-color: #ffcccb;\">$6,000</td><td style=\"text-align: right;\">$9,000</td></tr></tbody></table><h2>Nested Lists</h2><ul><li>First level item<ul><li>Second level<ul><li>Third level nested</li></ul></li></ul></li><li>Another first level</li></ul><ol><li>Numbered item one</li><li>Numbered item two<ol><li>Sub-item 2.1</li><li>Sub-item 2.2</li></ol></li></ol>",
+      "Editor_Type__c": "Standard"
+    },
+    {
+      "attributes": {
+        "type": "Rich_Text_Document__c",
+        "referenceId": "CodeAndBlockquotes"
+      },
+      "Name": "Code and Blockquotes",
+      "Content__c": "<h2>Code Examples</h2><p>Inline code: <code>const greeting = \"Hello World\";</code></p><pre style=\"background-color: #1e1e1e; color: #d4d4d4; padding: 15px; border-radius: 5px; font-family: monospace; overflow-x: auto;\">function calculateTotal(items) {\\n    return items\\n        .filter(item => item.active)\\n        .map(item => item.price * item.quantity)\\n        .reduce((sum, val) => sum + val, 0);\\n}</pre><h2>Blockquotes</h2><blockquote style=\"border-left: 4px solid #0070d2; padding-left: 15px; margin-left: 0; color: #666;\"><p>\"The best way to predict the future is to invent it.\"</p><p>— Alan Kay</p></blockquote><blockquote style=\"border-left: 4px solid #ff9a3c; padding-left: 15px; background-color: #fff8e6;\"><strong>Warning:</strong> This is an important notice that requires attention.</blockquote>",
+      "Editor_Type__c": "Standard"
+    },
+    {
+      "attributes": {
+        "type": "Rich_Text_Document__c",
+        "referenceId": "LinksAndMediaElements"
+      },
+      "Name": "Links and Media Elements",
+      "Content__c": "<h2>Various Link Types</h2><p><a href=\"https://salesforce.com\">Standard link to Salesforce</a></p><p><a href=\"https://developer.salesforce.com\" target=\"_blank\">Link opening in new tab</a></p><p><a href=\"mailto:test@example.com\">Email link: test@example.com</a></p><p><a href=\"tel:+1-555-123-4567\">Phone link: +1-555-123-4567</a></p><h2>Embedded Content Placeholders</h2><div style=\"border: 2px dashed #ccc; padding: 40px; text-align: center; background-color: #f9f9f9;\"><p style=\"color: #666;\">📷 Image placeholder - editors handle image upload differently</p></div><div style=\"border: 2px dashed #ccc; padding: 40px; text-align: center; background-color: #f0f7ff; margin-top: 10px;\"><p style=\"color: #666;\">🎥 Video embed area - test iframe/media support</p></div><h2>Horizontal Rules</h2><p>Content above the line</p><hr style=\"border: none; border-top: 2px solid #0070d2;\"/><p>Content below the line</p>",
+      "Editor_Type__c": "Standard"
+    },
+    {
+      "attributes": {
+        "type": "Rich_Text_Document__c",
+        "referenceId": "ComplexLayoutTest"
+      },
+      "Name": "Complex Layout Test",
+      "Content__c": "<h1 style=\"color: #0070d2; border-bottom: 2px solid #0070d2; padding-bottom: 10px;\">Product Release Notes v2.5</h1><div style=\"display: flex; gap: 20px;\"><div style=\"flex: 1; background: #f0f7ff; padding: 15px; border-radius: 8px;\"><h3>✨ New Features</h3><ul><li>Dark mode support</li><li>Export to PDF</li><li>Real-time collaboration</li></ul></div><div style=\"flex: 1; background: #f0fff4; padding: 15px; border-radius: 8px;\"><h3>🐛 Bug Fixes</h3><ul><li>Fixed login timeout</li><li>Resolved sync issues</li><li>Memory leak patched</li></ul></div></div><h2>Migration Guide</h2><table border=\"1\" style=\"width: 100%; border-collapse: collapse;\"><tr style=\"background: #eee;\"><th>Before</th><th>After</th><th>Action Required</th></tr><tr><td><code>api.v1.call()</code></td><td><code>api.v2.invoke()</code></td><td style=\"color: red;\">Update all calls</td></tr><tr><td><code>config.legacy</code></td><td><code>config.modern</code></td><td style=\"color: orange;\">Optional migration</td></tr></table>",
+      "Editor_Type__c": "Standard"
+    },
+    {
+      "attributes": {
+        "type": "Rich_Text_Document__c",
+        "referenceId": "EdgeCasesSpecialChars"
+      },
+      "Name": "Edge Cases and Special Characters",
+      "Content__c": "<h2>Special Characters</h2><p>Arrows: ← → ↑ ↓ ↔ ⇒ ⇐</p><p>Math: ± × ÷ ≠ ≤ ≥ ∞ √ ∑ ∏ π</p><p>Currency: € £ ¥ ₹ ₿</p><p>Emoji: 🚀 💡 ⚡ ✅ ❌ ⚠️ 📊 🔧</p><h2>HTML Entity Handling</h2><p>Less than: &lt; Greater than: &gt; Ampersand: &amp;</p><p>Non-breaking space between: word1&nbsp;&nbsp;&nbsp;word2</p><h2>Long Content Wrapping</h2><p>Superlongwordwithoutanyspacestotesthoweditorshandleoverflowandwordbreakingbehavior</p>",
+      "Editor_Type__c": "Standard"
+    }
+  ]
+}
