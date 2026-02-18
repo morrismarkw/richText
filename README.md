@@ -1,18 +1,73 @@
-# Salesforce DX Project: Next Steps
+# Rich Text Editor Evaluation Project
 
-Now that you’ve created a Salesforce DX project, what’s next? Here are some documentation resources to get you started.
+A Salesforce DX project for testing and comparing the Salesforce standard Rich Text Editor (lightning-input-rich-text) and Quill.js in Lightning Web Components.
 
-## How Do You Plan to Deploy Your Changes?
+## Components
 
-Do you want to deploy a set of changes, or create a self-contained application? Choose a [development model](https://developer.salesforce.com/tools/vscode/en/user-guide/development-models).
+- **richTextEvaluator** - Main evaluator component for comparing editors
+- **editorStandard** - Wrapper for Salesforce's lightning-input-rich-text
+- **editorQuill** - Quill.js editor integration
+- **editorQuillBlot** - Quill.js with custom blot support for embedded components
+- **componentEditorDialog** - Dialog for editing embedded components
+- **eventLogPanel** - Panel for logging editor events
 
-## Configure Your Salesforce DX Project
+## Installation
 
-The `sfdx-project.json` file contains useful configuration information for your project. See [Salesforce DX Project Configuration](https://developer.salesforce.com/docs/atlas.en-us.sfdx_dev.meta/sfdx_dev/sfdx_dev_ws_config.htm) in the _Salesforce DX Developer Guide_ for details about this file.
+### 1. Deploy Metadata
 
-## Read All About It
+```bash
+sf project deploy start --source-dir force-app --target-org <your-org-alias>
+```
 
-- [Salesforce Extensions Documentation](https://developer.salesforce.com/tools/vscode/)
-- [Salesforce CLI Setup Guide](https://developer.salesforce.com/docs/atlas.en-us.sfdx_setup.meta/sfdx_setup/sfdx_setup_intro.htm)
-- [Salesforce DX Developer Guide](https://developer.salesforce.com/docs/atlas.en-us.sfdx_dev.meta/sfdx_dev/sfdx_dev_intro.htm)
-- [Salesforce CLI Command Reference](https://developer.salesforce.com/docs/atlas.en-us.sfdx_cli_reference.meta/sfdx_cli_reference/cli_reference.htm)
+### 2. Assign Permission Set
+
+```bash
+sf org assign permset --name Rich_Text_Editor_User --target-org <your-org-alias>
+```
+
+### 3. Import Demo Data
+
+```bash
+sf data import tree --files data/Rich_Text_Document__c.json --target-org <your-org-alias>
+```
+
+### 4. Activate Lightning Record Page
+
+After deployment, you must activate the Lightning Record Page as the org default:
+
+1. Go to **Setup** > **Lightning App Builder**
+2. Find **"Rich Text Document Record Page"** in the list
+3. Click the dropdown arrow and select **Edit**
+4. Click **Activation** (top right)
+5. Select the **Org Default** tab
+6. Click **Assign as Org Default**
+7. Click **Save**
+
+## Demo Data
+
+The project includes 6 test documents covering various rich text scenarios:
+
+- Basic Formatting (headings, bold, italic, colors)
+- Tables and Lists (complex tables, nested lists)
+- Code and Blockquotes (code blocks, styled quotes)
+- Links and Media Elements (various link types, media placeholders)
+- Complex Layout (flexbox layouts, styled components)
+- Edge Cases (Unicode, emoji, HTML entities)
+
+## Project Structure
+
+```
+force-app/
+  main/default/
+    lwc/                    # Lightning Web Components
+    objects/                # Rich_Text_Document__c custom object
+    applications/           # Rich Text Evaluator app
+    permissionsets/         # Rich_Text_Editor_User permission set
+    flexipages/             # Record page configuration
+data/                       # Demo data for import
+```
+
+## Resources
+
+- [Salesforce LWC Documentation](https://developer.salesforce.com/docs/component-library/overview/components)
+- [Quill.js Documentation](https://quilljs.com/docs/quickstart)
